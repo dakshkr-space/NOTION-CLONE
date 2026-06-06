@@ -251,7 +251,7 @@ body {
 }
 
 .new-btn {
-    background-color: #2563eb;
+    background-color: #38940a;
     border: none;
     color: white;
     padding: 8px 12px;
@@ -264,20 +264,26 @@ body {
 }
 
 .note-card {
-    background-color: #8c3333;
+    background-color: #89ba5c;
     padding: 14px;
+    color:white;
     border-radius: 8px;
-    margin-bottom: 10px;
+    margin-bottom: 25px;
     cursor: pointer;
+    box-shadow: 15px 15px 30px rgb(25, 25, 25),
+             -15px -15px 30px rgb(60, 60, 60);
 }
 
 .note-card:hover {
-    background-color: #2a2a2a;
+    background-color: #d5d1d1;
+    box-shadow: 0px 0px 20px 1px #ffbb763f;
+  border: 1px solid rgba(255, 255, 255, 0.454);
 }
+
 
 .note-card span {
     font-size: 12px;
-    color: #aaa;
+    color: #e0d7d7;
 }
 
 .dropdown,
