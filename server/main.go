@@ -1,27 +1,30 @@
 package main
 
-import "time"
+import (
+	"log"
 
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/joho/godotenv"
+
+	"github.com/dakshkr-space/NOTION-CLONE/internal/db"
+	"github.com/dakshkr-space/NOTION-CLONE/internal/routes"
+)
 
 func main() {
+//env file -run before db.Connect() and before any os.Getenv() calls
+	 if err := godotenv.Load(); err != nil {
+        log.Println("No .env file found, using system environment variables")
+    }
 
-	// User
-	type User struct {
-	ID            string    `json:"id"`
-	Email         string    `json:"email"`
-	Name          string    `json:"name"`
-	OAuthProvider string    `json:"oauth_provider"`
-	CreatedAt     time.Time `json:"created_at"`
-}
+	db.Connect()
 
-   //Pages
-  type Page struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
-	ParentID  *string   `json:"parent_id"` // nil = root page
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
+	app := fiber.New()
+
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowHeaders: "Origin, Content-Type, Authorization",
+	}))
+	routes.Setup(app)
+	log.Fatal(app.Listen(":3000"))
 }
