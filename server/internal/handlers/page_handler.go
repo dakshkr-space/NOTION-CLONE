@@ -81,7 +81,7 @@ func UpdatePage(c *fiber.Ctx) error {
     userID := uint(c.Locals("userID").(float64))
     id := c.Params("id")
 
-    // First check the page exists and belongs to this user
+
     var page models.Page
     if err := db.DB.Where("id = ? AND user_id = ?", id, userID).First(&page).Error; err != nil {
         return c.Status(404).JSON(fiber.Map{"error": "Page not found"})
