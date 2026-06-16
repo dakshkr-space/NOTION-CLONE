@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Notion Login</title>
+  <link rel="stylesheet" href="login.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body>
+  <!-- Star background -->
+  <div class="stars"></div>
+  <div class="stars2"></div>
+  <div class="stars3"></div>
+  <div id="twinkleField"></div>
+  <!-- Login Card -->
+  <div class="login-wrapper">
+    <div class="button login-card">
+      <div class="blob1"></div>
+      <div class="inner">
+        <div class="header">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" alt="Notion Logo">
+          <h2>Welcome back</h2>
+        </div>
+        <form>
+          <label>Email</label>
+          <input type="email" placeholder="you@example.com" />
+          <label>Password</label>
+          <input type="password" placeholder="••••••••" />
+          <button class="login-btn" type="button">Log in</button>
+          <div class="divider">
+            <span>or</span>
+          </div>
+          <button class="google-btn" type="button">
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" />
+            Continue with Google
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const field = document.getElementById('twinkleField');
+    const COUNT = 50;
+    for (let i = 0; i < COUNT; i++) {
+      const s = document.createElement('div');
+      s.className = 'twinkle-star';
+      const size = (Math.random() * 1.6 + 1).toFixed(2);
+      s.style.width = size + 'px';
+      s.style.height = size + 'px';
+      s.style.left = (Math.random() * 100) + 'vw';
+      s.style.top = (Math.random() * 100) + 'vh';
+      s.style.setProperty('--dur', (Math.random() * 3 + 2.5).toFixed(2) + 's');
+      s.style.setProperty('--delay', (Math.random() * 4).toFixed(2) + 's');
+      field.appendChild(s);
+    }
+  </script>
+</body>
+</html>

@@ -64,7 +64,7 @@ func Register(c *fiber.Ctx) error {
 		return c.Status(409).JSON(fiber.Map{"error": "Email already registered"})
 	}
 
-	token, err := generateToken(user.ID)
+	token, err := generateToken(user)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate token"})
 	}
@@ -100,7 +100,7 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(401).JSON(fiber.Map{"error": "Invalid email or password"})
 	}
 
-	token, err := generateToken(user.ID)
+	token, err := generateToken(user)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate token"})
 	}
@@ -161,7 +161,7 @@ func GoogleCallback(c *fiber.Ctx) error {
 		}
 	}
 
-	token, err := generateToken(user.ID)
+	token, err := generateToken(user)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate token"})
 	}
@@ -169,10 +169,23 @@ func GoogleCallback(c *fiber.Ctx) error {
 	return c.Redirect("http://localhost:5500/client/dashboard/dashboard.html?token=" + token)
 }
 
-func generateToken(userID uint) (string, error) {
+// generateToken now takes the FULL user struct (not just ID)
+// because we need access to user.Role and user.TeamID too
+func generateToken(user models.User) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id": userID,
+		"user_id": user.ID,
+		"role":    user.Role,
 		"exp":     time.Now().Add(7 * 24 * time.Hour).Unix(),
+	}
+
+	// user.TeamID is *uint (a pointer) — it can be nil if user has no team
+	// JWT claims work best with concrete values, so:
+	// - if TeamID is set, dereference it (*user.TeamID) to get the actual number
+	// - if nil, store 0 to represent "no team"
+	if user.TeamID != nil {
+		claims["team_id"] = *user.TeamID
+	} else {
+		claims["team_id"] = 0
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

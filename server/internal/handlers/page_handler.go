@@ -6,7 +6,6 @@ import (
     "github.com/dakshkr-space/NOTION-CLONE/internal/models"
 )
 
-// ─── CREATE PAGE ─────────────────────────────────────────────────────────────
 
 func CreatePage(c *fiber.Ctx) error {
 
