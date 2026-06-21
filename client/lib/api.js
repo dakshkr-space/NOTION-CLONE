@@ -1,4 +1,4 @@
-// The base URL of your Go backend (main.go listens on :3000)
+// The base URL of Go backend (main.go listens on :3000)
 
 const API_BASE = "http://localhost:3000";
 
