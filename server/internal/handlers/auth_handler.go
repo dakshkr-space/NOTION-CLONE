@@ -166,7 +166,7 @@ func GoogleCallback(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate token"})
 	}
 
-	return c.Redirect("http://localhost:5500/client/dashboard/dashboard.html?token=" + token)
+	return c.Redirect("http://localhost:3001/dashboard?token=" + token)
 }
 
 // generateToken now takes the FULL user struct (not just ID)
