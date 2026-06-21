@@ -1,7 +1,6 @@
 # Notion Clone
 
 A Notion-style dashboard UI with clean layout and structured components.
-Currently working on layout, sidebar, and styling improvements.
 
 ## Current Progress
 
