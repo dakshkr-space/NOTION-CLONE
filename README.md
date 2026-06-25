@@ -72,9 +72,9 @@ Backend runs on `http://localhost:3000`, frontend on `http://localhost:3001`.
 
 ```
 DATABASE_URL=postgres://user:pass@localhost:5432/notion
-JWT_SECRET=your_secret_key
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
+JWT_SECRET=secret_key
+GOOGLE_CLIENT_ID=google_client_id
+GOOGLE_CLIENT_SECRET=google_client_secret
 ```
 
 ## API Endpoints
