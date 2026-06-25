@@ -8,9 +8,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func Protected(c *fiber.Ctx) error {   //default middle ware function for fiber   
+func Protected(c *fiber.Ctx) error { //default middle ware function for fiber
 
-	authHeader := c.Get("Authorization")    //reads authorization http header, if empty return..
+	authHeader := c.Get("Authorization") //reads authorization http header, if empty return..
 	if authHeader == "" {
 		return c.Status(401).JSON(fiber.Map{"error": "Missing authorization header"}) //401 unauthorised
 	}
@@ -31,14 +31,15 @@ func Protected(c *fiber.Ctx) error {   //default middle ware function for fiber
 		return c.Status(401).JSON(fiber.Map{"error": "Invalid token claims"})
 	}
 
-	// claims is a pointer, so dereference 
+	// claims is a pointer, so dereference
+	c.Locals("userID", (*claims)["user_id"])
 	c.Locals("role", (*claims)["role"])
 	c.Locals("teamID", (*claims)["team_id"])
 
 	return c.Next()
 }
 
-// RequireRole is a middleware 
+// RequireRole is a middleware
 // Usage: middleware.RequireRole("admin", "team_head")
 // Returns a middleware function that only lets through users with one of the listed roles.
 func RequireRole(allowedRoles ...string) fiber.Handler {

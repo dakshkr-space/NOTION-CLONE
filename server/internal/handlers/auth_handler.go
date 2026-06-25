@@ -86,6 +86,7 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
 	}
 
+	//Following user enamuration
 	var user models.User
 	if err := db.DB.Where("email = ?", body.Email).First(&user).Error; err != nil {
 
