@@ -81,3 +81,28 @@ export async function createPage(title, content) {
   if (!res.ok) throw new Error(data.error || "Failed to create page");
   return data;
 }
+
+// Fetch child pages of a given parent page ID
+export async function getChildPages(parentId) {
+  const res = await fetch(`${API_BASE}/pages/${parentId}/children`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to fetch child pages");
+  return data;
+}
+
+// Create a subpage under a parent page
+export async function createSubPage(title, content, parentId) {
+  const res = await fetch(`${API_BASE}/pages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({ title, content, parent_id: parentId }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to create subpage");
+  return data;
+}

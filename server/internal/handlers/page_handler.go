@@ -126,3 +126,16 @@ func DeletePage(c *fiber.Ctx) error {
 
     return c.JSON(fiber.Map{"message": "Page deleted"})
 }
+
+
+func GetChildPages(c *fiber.Ctx) error {
+    userID := uint(c.Locals("userID").(float64))
+    parentID := c.Params("id")
+
+    var pages []models.Page
+    if err := db.DB.Where("parent_id = ? AND user_id = ?", parentID, userID).Find(&pages).Error; err != nil {
+        return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch child pages"})
+    }
+
+    return c.JSON(pages)
+}

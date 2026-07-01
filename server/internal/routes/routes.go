@@ -20,12 +20,11 @@ func Setup(app *fiber.App) {
 	pages.Get("/:id", handlers.GetPage)
 	pages.Put("/:id", handlers.UpdatePage)
 	pages.Delete("/:id", handlers.DeletePage)
-
-
+	pages.Get("/:id/children", handlers.GetChildPages)
 
 	teams := app.Group("/teams", middleware.Protected)
-    teams.Post("/", handlers.CreateTeam)
-    teams.Post("/members", middleware.RequireRole("team_head", "admin"), handlers.AddTeamMember)
-    teams.Delete("/members/:userId", middleware.RequireRole("team_head", "admin"), handlers.RemoveTeamMember)
-    teams.Put("/promote/:userId", middleware.RequireRole("admin"), handlers.PromoteUser)
+	teams.Post("/", handlers.CreateTeam)
+	teams.Post("/members", middleware.RequireRole("team_head", "admin"), handlers.AddTeamMember)
+	teams.Delete("/members/:userId", middleware.RequireRole("team_head", "admin"), handlers.RemoveTeamMember)
+	teams.Put("/promote/:userId", middleware.RequireRole("admin"), handlers.PromoteUser)
 }
