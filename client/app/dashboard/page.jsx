@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getPages, createPage, createSubPage, getChildPages, getUser, getToken, clearAuth } from "../../lib/api";
+import RichTextEditor from "../../components/RichTextEditor";
 
 export default function DashboardPage() {
   const [pages, setPages] = useState([]);
@@ -283,9 +284,10 @@ export default function DashboardPage() {
               <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 24 }}>
                 Created {new Date(selectedPage.created_at).toLocaleDateString()}
               </p>
-              <p style={{ color: "rgba(255,255,255,0.75)", lineHeight: 1.8, whiteSpace: "pre-wrap", marginBottom: 40 }}>
-                {selectedPage.content || <em style={{ color: "rgba(255,255,255,0.25)" }}>No content yet.</em>}
-              </p>
+                <RichTextEditor
+                 content={selectedPage.content || ""}
+                  editable={false}
+                  />
 
               {/* Create subpage section */}
               <div style={{ background: "#191919", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 20, marginTop: 32 }}>
@@ -298,12 +300,12 @@ export default function DashboardPage() {
                     onChange={e => setSubPageTitle(e.target.value)}
                     style={{ width: "100%", padding: "9px 12px", marginBottom: 10, background: "#0c0f13", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#fff", fontSize: 13, boxSizing: "border-box" }}
                   />
-                  <textarea
-                    placeholder="Content (optional)"
-                    value={subPageContent}
-                    onChange={e => setSubPageContent(e.target.value)}
-                    style={{ width: "100%", padding: "9px 12px", minHeight: 70, background: "#0c0f13", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#fff", fontSize: 13, resize: "vertical", boxSizing: "border-box" }}
+ 
+                  <RichTextEditor
+                  content={subPageContent}
+                   onChange={setSubPageContent}
                   />
+
                   <button
                     type="submit"
                     disabled={creatingSubPage}
@@ -344,12 +346,10 @@ export default function DashboardPage() {
                     onChange={e => setTitle(e.target.value)}
                     style={{ width: "100%", padding: "9px 12px", marginBottom: 10, background: "#0c0f13", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#fff", fontSize: 13, boxSizing: "border-box" }}
                   />
-                  <textarea
-                    placeholder="Write something..."
-                    value={content}
-                    onChange={e => setContent(e.target.value)}
-                    style={{ width: "100%", padding: "9px 12px", minHeight: 80, background: "#0c0f13", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#fff", fontSize: 13, resize: "vertical", boxSizing: "border-box" }}
-                  />
+                 <RichTextEditor
+                  content={content}
+                  onChange={setContent}
+                 />
                   <button
                     type="submit"
                     disabled={creating}
