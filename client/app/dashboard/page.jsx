@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getPages, createPage, createSubPage, getChildPages, getUser, getToken, clearAuth } from "../../lib/api";
+import { getPages, createPage, createSubPage, getChildPages, updatePage, getUser, getToken, clearAuth } from "../../lib/api";
 import RichTextEditor from "../../components/RichTextEditor";
 
 export default function DashboardPage() {
@@ -19,6 +19,8 @@ export default function DashboardPage() {
   const [subPageContent, setSubPageContent] = useState("");
   const [creatingSubPage, setCreatingSubPage] = useState(false);
   const router = useRouter();
+  const [saveStatus, setSaveStatus] = useState(""); // "Saving...", "Saved", or ""
+  const [saveTimer, setSaveTimer] = useState(null);  // holds the debounce timer
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -113,6 +115,31 @@ export default function DashboardPage() {
     clearAuth();
     router.replace("/login");
   }
+
+  function handleContentChange(newContent) {
+  // Update content state immediately so editor shows changes
+  setSelectedPage(prev => ({ ...prev, content: newContent }));
+
+  // Clear any existing timer (reset the 1 second countdown)
+  if (saveTimer) clearTimeout(saveTimer);
+
+  // Show "Saving..." status
+  setSaveStatus("Saving...");
+
+  // Start a new 1 second timer — only saves after user stops typing
+  const timer = setTimeout(async () => {
+    try {
+      await updatePage(selectedPage.id, selectedPage.title, newContent);
+      setSaveStatus("Saved ✓");
+      // Clear the "Saved" message after 2 seconds
+      setTimeout(() => setSaveStatus(""), 2000);
+    } catch (err) {
+      setSaveStatus("Failed to save");
+    }
+  }, 1000);
+
+  setSaveTimer(timer);
+}
 
   // Renders a page link + its children recursively
   function PageLink({ page, depth = 0 }) {
@@ -281,13 +308,22 @@ export default function DashboardPage() {
             /* ── OPEN PAGE VIEW ── */
             <div>
               <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: "rgba(255,255,255,0.93)" }}>{selectedPage.title}</h2>
-              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 24 }}>
-                Created {new Date(selectedPage.created_at).toLocaleDateString()}
-              </p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", margin: 0 }}>
+                    Created {new Date(selectedPage.created_at).toLocaleDateString()}
+                </p>
+                   {saveStatus && (
+                   <span style={{ fontSize: 12, color: saveStatus === "Saved ✓" ? "#89ba5c" : "rgba(255,255,255,0.4)" }}>
+                   {saveStatus}
+                   </span>
+                     )}
+              </div>
+
                 <RichTextEditor
                  content={selectedPage.content || ""}
-                  editable={false}
-                  />
+                  editable={true}
+                 onChange={handleContentChange}
+                 />
 
               {/* Create subpage section */}
               <div style={{ background: "#191919", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 20, marginTop: 32 }}>

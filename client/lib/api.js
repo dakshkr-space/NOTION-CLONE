@@ -106,3 +106,18 @@ export async function createSubPage(title, content, parentId) {
   if (!res.ok) throw new Error(data.error || "Failed to create subpage");
   return data;
 }
+
+// Update an existing page (used for auto-save)
+export async function updatePage(id, title, content) {
+  const res = await fetch(`${API_BASE}/pages/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({ title, content }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to update page");
+  return data;
+}
