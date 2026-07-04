@@ -37,12 +37,13 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const data =
-        tab === "login"
-          ? await loginWithEmail(email, password)
-          : await registerWithEmail(name, email, password);
-      saveAuth(data.token, data.user);
-      router.replace("/dashboard");
+     const data = tab === "login"
+     ? await loginWithEmail(email, password)
+     : await registerWithEmail(name, email, password);
+     console.log("data from login:", data);
+     localStorage.setItem("token", data.token);
+     localStorage.setItem("user", JSON.stringify(data.user));
+    router.replace("/dashboard");
     } catch (err) {
       setError(err.message);
     } finally {

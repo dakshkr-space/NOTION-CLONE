@@ -1,3 +1,4 @@
+```
 # Notion Clone
 
 A full-stack Notion-inspired note-taking and collaboration app built with Go (Fiber) and Next.js.
@@ -5,7 +6,7 @@ A full-stack Notion-inspired note-taking and collaboration app built with Go (Fi
 ## Tech Stack
 
 **Backend:** Go, Fiber, GORM, PostgreSQL, JWT, Google OAuth2, bcrypt  
-**Frontend:** Next.js 16 (React, App Router, Turbopack)
+**Frontend:** Next.js 16 (React, App Router, Turbopack), TipTap rich text editor
 
 ## Current Features
 
@@ -15,20 +16,30 @@ A full-stack Notion-inspired note-taking and collaboration app built with Go (Fi
 - JWT-based stateless auth (7-day expiry) with role and team claims embedded
 
 ### Pages
-- Create, read, update, and delete pages
+- Create, read, update, delete pages
+- Rich text editing via TipTap — headings (H1/H2/H3), bold, italic, strikethrough, bullet lists, numbered lists, checklists, code blocks, blockquotes
+- Auto-save — content saves automatically 1 second after the user stops typing, with live "Saving..." / "Saved ✓" status indicator
 - Pages scoped per user with ownership checks on every request
-- Nested page support via `parent_id` field
+
+### Nested Pages
+- Create subpages inside any page via a "New subpage" form
+- Sidebar shows expand/collapse arrows (▶) per page — clicking loads and shows child pages indented underneath
+- Subpages appear instantly in the sidebar after creation without a page refresh
+
+### Workspace Organization
+- Sidebar splits pages into Workspace (team pages) and Personal sections
+- Workspace section only visible to users who belong to a team
 
 ### Teams & Role-Based Access Control
-- Create teams (creator becomes `team_head`)
+- Create teams (creator becomes team_head)
 - Add and remove team members by email
-- 4-tier role system: `admin`, `team_head`, `user`, `viewer`
+- 4-tier role system: admin, team_head, user, viewer
 - Role-based middleware protecting team management endpoints
 
 ### Infrastructure
 - PostgreSQL with GORM auto-migration
 - CORS configured for separate frontend/backend dev servers
-- Environment-based config via `.env` (never committed)
+- Environment-based config via .env (never committed)
 
 ## Project Structure
 
@@ -41,11 +52,13 @@ NOTION-CLONE/
 │       ├── models/                 # User, Page, Team structs
 │       ├── handlers/               # Auth, Page, Team handlers
 │       ├── middleware/             # JWT verification, role checks
-│       └── routes/routes.go        # API endpoint registration
-└── client/                         # Next.js frontend
+│       └── routes/routes.go       # API endpoint registration
+└── client/                        # Next.js frontend
     ├── app/
-    │   ├── login/page.jsx          # Login + register page
-    │   └── dashboard/page.jsx      # Dashboard with page management
+    │   ├── login/page.jsx          # Login + register page (aurora UI)
+    │   └── dashboard/page.jsx      # Dashboard with sidebar, editor, pages
+    ├── components/
+    │   └── RichTextEditor.jsx      # TipTap editor with toolbar
     ├── lib/api.js                  # Centralized API calls
     └── app/globals.css             # Global styles
 ```
@@ -55,7 +68,7 @@ NOTION-CLONE/
 **Backend:**
 ```bash
 cd server
-cp .env.example .env   # fill in your values
+# create a .env file with the variables listed in Environment Variables below
 go run main.go
 ```
 
@@ -90,6 +103,7 @@ GOOGLE_CLIENT_SECRET=google_client_secret
 | GET | `/pages/:id` | JWT | Get a single page |
 | PUT | `/pages/:id` | JWT | Update a page |
 | DELETE | `/pages/:id` | JWT | Delete a page |
+| GET | `/pages/:id/children` | JWT | Get child pages of a page |
 | POST | `/teams` | JWT | Create a team |
 | POST | `/teams/members` | team_head/admin | Add team member |
 | DELETE | `/teams/members/:userId` | team_head/admin | Remove team member |
@@ -97,10 +111,6 @@ GOOGLE_CLIENT_SECRET=google_client_secret
 
 ## Roadmap
 
-- [ ] Rich text editor (headings, bullets, checklists, code blocks)
-- [ ] Nested page navigation in sidebar
-- [ ] Auto-save on keystroke (debounced)
-- [ ] Folder/workspace organization
-- [ ] Share pages via public link
+- [ ] Share pages with teammates via public link
 - [ ] Real-time collaboration via WebSockets
 - [ ] GenAI integration (summarize notes, generate meeting notes, improve writing)

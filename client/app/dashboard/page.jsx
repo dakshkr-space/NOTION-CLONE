@@ -33,7 +33,20 @@ export default function DashboardPage() {
       router.replace("/login");
       return;
     }
-    setUser(getUser());
+     // Decode user info from JWT token directly
+      const token = getToken();
+      if (token) {
+       try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+         setUser({ 
+          id: payload.user_id, 
+          role: payload.role, 
+         team_id: payload.team_id 
+         });
+    } catch (e) {
+    console.error("Failed to decode token", e);
+  }
+}
     fetchPages();
   }, []);
 
@@ -220,7 +233,7 @@ export default function DashboardPage() {
               {user?.name?.[0]?.toUpperCase() ?? "D"}
             </div>
             <span style={{ fontSize: 13.5, fontWeight: 600, color: "rgba(255,255,255,0.88)", flex: 1 }}>
-              {user?.name ?? "My Space"}
+              {user?.email ?? "My Space"}
             </span>
           </div>
           <div style={{ display: "flex", gap: 2 }}>
@@ -247,19 +260,33 @@ export default function DashboardPage() {
             </div>
           ))}
 
-          {/* Pages section label */}
-          <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.28)", letterSpacing: "0.04em", textTransform: "uppercase", padding: "14px 10px 4px 10px" }}>
-            Pages
-          </div>
+        {/* Workspace pages */}
+{!!(user?.team_id) && (
+  <>
+    <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.28)", letterSpacing: "0.04em", textTransform: "uppercase", padding: "14px 10px 4px 10px" }}>
+      Workspace
+    </div>
+    {loadingPages ? (
+      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", padding: "8px 10px" }}>Loading...</div>
+    ) : pages.filter(p => p.team_id).length === 0 ? (
+      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", padding: "8px 10px" }}>No workspace pages</div>
+    ) : (
+      pages.filter(p => p.team_id).map(page => <PageLink key={page.id} page={page} />)
+    )}
+  </>
+)}
 
-          {/* Page tree */}
-          {loadingPages ? (
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", padding: "8px 10px" }}>Loading...</div>
-          ) : pages.length === 0 ? (
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", padding: "8px 10px" }}>No pages yet</div>
-          ) : (
-            pages.map(page => <PageLink key={page.id} page={page} />)
-          )}
+{/* Personal pages */}
+<div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.28)", letterSpacing: "0.04em", textTransform: "uppercase", padding: "14px 10px 4px 10px" }}>
+  Personal
+</div>
+{loadingPages ? (
+  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", padding: "8px 10px" }}>Loading...</div>
+) : pages.filter(p => !p.team_id).length === 0 ? (
+  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", padding: "8px 10px" }}>No personal pages</div>
+) : (
+  pages.filter(p => !p.team_id).map(page => <PageLink key={page.id} page={page} />)
+)}
         </div>
 
         {/* Sidebar bottom */}
