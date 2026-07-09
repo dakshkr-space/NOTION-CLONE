@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -44,6 +45,11 @@ func Register(c *fiber.Ctx) error {
 
 	if body.Email == "" || body.Password == "" || body.Name == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "Name, email and password are required"})
+	}
+
+	emailRegex := regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
+	if !emailRegex.MatchString(body.Email) {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid email format"})
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)

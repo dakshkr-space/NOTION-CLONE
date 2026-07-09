@@ -31,6 +31,13 @@ export default function LoginPage() {
       setError("Email and password are required.");
       return;
     }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+if (!emailRegex.test(email)) {
+  setError("Please enter a valid email address.");
+  return;
+}
+
     if (tab === "register" && !name) {
       setError("Name is required.");
       return;

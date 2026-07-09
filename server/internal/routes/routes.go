@@ -13,6 +13,8 @@ func Setup(app *fiber.App) {
 	auth.Post("/login", handlers.Login)
 	auth.Get("/google", handlers.GoogleLogin)
 	auth.Get("/google/callback", handlers.GoogleCallback)
+	// PUBLIC shared page route - no auth needed
+	app.Get("/shared/:token", handlers.GetSharedPage)
 
 	pages := app.Group("/pages", middleware.Protected)
 	pages.Post("/", handlers.CreatePage)
@@ -21,6 +23,7 @@ func Setup(app *fiber.App) {
 	pages.Put("/:id", handlers.UpdatePage)
 	pages.Delete("/:id", handlers.DeletePage)
 	pages.Get("/:id/children", handlers.GetChildPages)
+	pages.Post("/:id/share", handlers.SharePage)
 
 	teams := app.Group("/teams", middleware.Protected)
 	teams.Post("/", handlers.CreateTeam)
