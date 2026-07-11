@@ -121,3 +121,22 @@ export async function updatePage(id, title, content) {
   if (!res.ok) throw new Error(data.error || "Failed to update page");
   return data;
 }
+
+// Generate a share link for a page
+export async function sharePage(pageId) {
+  const res = await fetch(`${API_BASE}/pages/${pageId}/share`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to generate share link");
+  return data;
+}
+
+// Fetch a publicly shared page by token (no auth needed)
+export async function getSharedPage(token) {
+  const res = await fetch(`${API_BASE}/shared/${token}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Page not found");
+  return data;
+}

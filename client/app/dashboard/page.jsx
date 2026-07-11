@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getPages, createPage, createSubPage, getChildPages, updatePage, getUser, getToken, clearAuth } from "../../lib/api";
+import { getPages, createPage, createSubPage, getChildPages, updatePage, sharePage, getUser, getToken, clearAuth } from "../../lib/api";
 import RichTextEditor from "../../components/RichTextEditor";
 
 export default function DashboardPage() {
@@ -21,6 +21,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const [saveStatus, setSaveStatus] = useState(""); // "Saving...", "Saved", or ""
   const [saveTimer, setSaveTimer] = useState(null);  // holds the debounce timer
+  const [shareUrl, setShareUrl] = useState("");
+  const [sharing, setSharing] = useState(false); 
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -128,6 +130,18 @@ export default function DashboardPage() {
     clearAuth();
     router.replace("/login");
   }
+async function handleShare() {
+  setSharing(true);
+  setShareUrl("");
+  try {
+    const data = await sharePage(selectedPage.id);
+    setShareUrl(data.share_url);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setSharing(false);
+  }
+
 
   function handleContentChange(newContent) {
   // Update content state immediately so editor shows changes
@@ -336,15 +350,35 @@ export default function DashboardPage() {
             <div>
               <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: "rgba(255,255,255,0.93)" }}>{selectedPage.title}</h2>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", margin: 0 }}>
-                    Created {new Date(selectedPage.created_at).toLocaleDateString()}
-                </p>
-                   {saveStatus && (
-                   <span style={{ fontSize: 12, color: saveStatus === "Saved ✓" ? "#89ba5c" : "rgba(255,255,255,0.4)" }}>
-                   {saveStatus}
-                   </span>
-                     )}
-              </div>
+  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", margin: 0 }}>
+    Created {new Date(selectedPage.created_at).toLocaleDateString()}
+  </p>
+  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+    {saveStatus && (
+      <span style={{ fontSize: 12, color: saveStatus === "Saved ✓" ? "#89ba5c" : "rgba(255,255,255,0.4)" }}>
+        {saveStatus}
+      </span>
+    )}
+    <button
+      onClick={handleShare}
+      disabled={sharing}
+      style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: "#38940a", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+      {sharing ? "Generating..." : "🔗 Share"}
+    </button>
+  </div>
+</div>
+
+{/* Share URL display */}
+{shareUrl && (
+  <div style={{ background: "#191919", border: "1px solid rgba(56,148,10,0.4)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+    <span style={{ fontSize: 12, color: "#89ba5c", flex: 1, wordBreak: "break-all" }}>{shareUrl}</span>
+    <button
+      onClick={() => { navigator.clipboard.writeText(shareUrl); }}
+      style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: "none", color: "#fff", fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
+      Copy
+    </button>
+  </div>
+)}
 
                 <RichTextEditor
                  content={selectedPage.content || ""}
@@ -465,4 +499,5 @@ export default function DashboardPage() {
 
     </div>
   );
+}
 }
