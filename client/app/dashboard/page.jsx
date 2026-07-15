@@ -141,6 +141,7 @@ async function handleShare() {
   } finally {
     setSharing(false);
   }
+}
 
 
   function handleContentChange(newContent) {
@@ -172,6 +173,8 @@ async function handleShare() {
   function PageLink({ page, depth = 0 }) {
     const isExpanded = expandedPages[page.id];
     const children = childPages[page.id] || [];
+
+    if (!getToken()) return null;
 
     return (
       <div>
@@ -499,5 +502,4 @@ async function handleShare() {
 
     </div>
   );
-}
 }
