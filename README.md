@@ -1,30 +1,31 @@
-```
 # Notion Clone
 
 A full-stack Notion-inspired note-taking and collaboration app built with Go (Fiber) and Next.js.
 
 ## Tech Stack
 
-**Backend:** Go, Fiber, GORM, PostgreSQL, JWT, Google OAuth2, bcrypt  
+**Backend:** Go, Fiber, GORM, PostgreSQL, JWT, Google OAuth2, bcrypt, Groq AI (Llama 3.3)
 **Frontend:** Next.js 16 (React, App Router, Turbopack), TipTap rich text editor
 
-## Current Features
+## Features
 
 ### Authentication
 - Email/password registration and login with bcrypt password hashing
 - Google OAuth2 login (full redirect flow)
 - JWT-based stateless auth (7-day expiry) with role and team claims embedded
+- Email format validation on both frontend and backend
 
 ### Pages
 - Create, read, update, delete pages
 - Rich text editing via TipTap — headings (H1/H2/H3), bold, italic, strikethrough, bullet lists, numbered lists, checklists, code blocks, blockquotes
-- Auto-save — content saves automatically 1 second after the user stops typing, with live "Saving..." / "Saved ✓" status indicator
+- Auto-save — content saves automatically 1 second after the user stops typing with live Saving/Saved status
 - Pages scoped per user with ownership checks on every request
+- Share pages via public link — anyone with the link can view without logging in
 
 ### Nested Pages
-- Create subpages inside any page via a "New subpage" form
-- Sidebar shows expand/collapse arrows (▶) per page — clicking loads and shows child pages indented underneath
-- Subpages appear instantly in the sidebar after creation without a page refresh
+- Create subpages inside any page
+- Sidebar shows expand/collapse arrows per page — clicking loads child pages indented underneath
+- Subpages appear instantly after creation without a page refresh
 
 ### Workspace Organization
 - Sidebar splits pages into Workspace (team pages) and Personal sections
@@ -36,6 +37,14 @@ A full-stack Notion-inspired note-taking and collaboration app built with Go (Fi
 - 4-tier role system: admin, team_head, user, viewer
 - Role-based middleware protecting team management endpoints
 
+### AI Workspace (Groq — Llama 3.3)
+- AI assistant panel in the right sidebar
+- Summarize current page in bullet points
+- Generate structured meeting notes from page content
+- Improve writing quality
+- Ask any question with current page as context
+- Powered by Groq's free API running Llama 3.3 70B
+
 ### Infrastructure
 - PostgreSQL with GORM auto-migration
 - CORS configured for separate frontend/backend dev servers
@@ -45,22 +54,23 @@ A full-stack Notion-inspired note-taking and collaboration app built with Go (Fi
 
 ```
 NOTION-CLONE/
-├── server/                         # Go backend
+├── server/                          # Go backend
 │   ├── main.go
 │   └── internal/
-│       ├── db/postgres.go          # Database connection
-│       ├── models/                 # User, Page, Team structs
-│       ├── handlers/               # Auth, Page, Team handlers
-│       ├── middleware/             # JWT verification, role checks
-│       └── routes/routes.go       # API endpoint registration
-└── client/                        # Next.js frontend
+│       ├── db/postgres.go           # Database connection
+│       ├── models/                  # User, Page, Team structs
+│       ├── handlers/                # Auth, Page, Team, AI handlers
+│       ├── middleware/              # JWT verification, role checks
+│       └── routes/routes.go        # API endpoint registration
+└── client/                         # Next.js frontend
     ├── app/
-    │   ├── login/page.jsx          # Login + register page (aurora UI)
-    │   └── dashboard/page.jsx      # Dashboard with sidebar, editor, pages
+    │   ├── login/page.jsx           # Login + register page (aurora UI)
+    │   ├── dashboard/page.jsx       # Dashboard with sidebar, editor, AI panel
+    │   └── shared/[token]/page.jsx  # Public shared page view
     ├── components/
-    │   └── RichTextEditor.jsx      # TipTap editor with toolbar
-    ├── lib/api.js                  # Centralized API calls
-    └── app/globals.css             # Global styles
+    │   └── RichTextEditor.jsx       # TipTap editor with toolbar
+    ├── lib/api.js                   # Centralized API calls
+    └── app/globals.css              # Global styles
 ```
 
 ## Running Locally
@@ -68,7 +78,7 @@ NOTION-CLONE/
 **Backend:**
 ```bash
 cd server
-# create a .env file with the variables listed in Environment Variables below
+# create a .env file with the variables listed below
 go run main.go
 ```
 
@@ -88,6 +98,7 @@ DATABASE_URL=postgres://user:pass@localhost:5432/notion
 JWT_SECRET=secret_key
 GOOGLE_CLIENT_ID=google_client_id
 GOOGLE_CLIENT_SECRET=google_client_secret
+GROQ_API_KEY=groq_api_key
 ```
 
 ## API Endpoints
@@ -103,14 +114,17 @@ GOOGLE_CLIENT_SECRET=google_client_secret
 | GET | `/pages/:id` | JWT | Get a single page |
 | PUT | `/pages/:id` | JWT | Update a page |
 | DELETE | `/pages/:id` | JWT | Delete a page |
-| GET | `/pages/:id/children` | JWT | Get child pages of a page |
+| GET | `/pages/:id/children` | JWT | Get child pages |
+| POST | `/pages/:id/share` | JWT | Generate share link |
+| GET | `/shared/:token` | None | View shared page publicly |
 | POST | `/teams` | JWT | Create a team |
 | POST | `/teams/members` | team_head/admin | Add team member |
 | DELETE | `/teams/members/:userId` | team_head/admin | Remove team member |
 | PUT | `/teams/promote/:userId` | admin | Change user role |
+| POST | `/ai/ask` | JWT | Ask AI about page content |
 
 ## Roadmap
 
-- [ ] Share pages with teammates via public link
 - [ ] Real-time collaboration via WebSockets
-- [ ] GenAI integration (summarize notes, generate meeting notes, improve writing)
+- [ ] Landing page
+- [ ] Delete and edit pages from dashboard
