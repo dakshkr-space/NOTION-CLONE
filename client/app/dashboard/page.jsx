@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getPages, createPage, createSubPage, getChildPages, updatePage, sharePage, getUser, getToken, clearAuth } from "../../lib/api";
+import { getPages, createPage, createSubPage, getChildPages, updatePage, sharePage, askAI, getUser, getToken, clearAuth } from "../../lib/api";
 import RichTextEditor from "../../components/RichTextEditor";
 
 export default function DashboardPage() {
@@ -23,6 +23,9 @@ export default function DashboardPage() {
   const [saveTimer, setSaveTimer] = useState(null);  // holds the debounce timer
   const [shareUrl, setShareUrl] = useState("");
   const [sharing, setSharing] = useState(false); 
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiResponse, setAiResponse] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -143,6 +146,25 @@ async function handleShare() {
   }
 }
 
+async function handleAskAI(e) {
+  e.preventDefault();
+  if (!aiPrompt.trim()) return;
+  setAiLoading(true);
+  setAiResponse("");
+  try {
+    const data = await askAI(
+      aiPrompt,
+      selectedPage?.title || "",
+      selectedPage?.content || ""
+    );
+    setAiResponse(data.response);
+  } catch (err) {
+    setAiResponse("Error: " + err.message);
+  } finally {
+    setAiLoading(false);
+    setAiPrompt("");
+  }
+}
 
   function handleContentChange(newContent) {
   // Update content state immediately so editor shows changes
@@ -485,20 +507,61 @@ async function handleShare() {
         </div>
       </div>
 
-      {/* ── RIGHT SIDEBAR (AI Workspace) ── */}
-      <div style={{ width: "22%", minWidth: 200, background: "#1c1a1a", padding: 20, display: "flex", flexDirection: "column", borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
-        <h3 style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.88)", marginBottom: 12, letterSpacing: "0.04em", textTransform: "uppercase" }}>AI Workspace</h3>
-        <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, marginBottom: 16 }}>
-          Welcome to your workspace{user?.name ? `, ${user.name}` : ""}. Your AI assistant is coming soon — it will help you summarize notes, generate meeting notes, and improve your writing.
-        </p>
-        <div style={{ background: "#1f1f1f", padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
-          Track and organize any kind of work
-        </div>
-        <div style={{ marginTop: "auto", background: "#4d4b4b", padding: 10, borderRadius: 6, fontSize: 13, color: "rgba(255,255,255,0.5)", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
-          <i className="bi bi-search"></i>
-          Ask me anything...
-        </div>
-      </div>
+    {/* ── RIGHT SIDEBAR (AI Workspace) ── */}
+<div style={{ width: "22%", minWidth: 200, background: "#1c1a1a", padding: 20, display: "flex", flexDirection: "column", borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
+  <h3 style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.88)", marginBottom: 12, letterSpacing: "0.04em", textTransform: "uppercase" }}>AI Workspace</h3>
+  
+  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.6, marginBottom: 16 }}>
+    {selectedPage 
+      ? `Asking about: "${selectedPage.title}"` 
+      : "Open a page to give AI context, or ask anything."}
+  </p>
+
+  {/* Quick action buttons */}
+  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+    {[
+      { label: "📝 Summarize this page", prompt: "Summarize this page in 3 bullet points." },
+      { label: "📋 Generate meeting notes", prompt: "Convert this page content into structured meeting notes." },
+      { label: "✍️ Improve writing", prompt: "Improve the writing quality of this page content." },
+    ].map((action, i) => (
+      <button
+        key={i}
+        onClick={() => setAiPrompt(action.prompt)}
+        style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: "#1f1f1f", color: "rgba(255,255,255,0.6)", fontSize: 12, cursor: "pointer", textAlign: "left" }}>
+        {action.label}
+      </button>
+    ))}
+  </div>
+
+  {/* AI response area */}
+  {aiLoading && (
+    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 12, padding: 10, background: "#1f1f1f", borderRadius: 6 }}>
+      Thinking...
+    </div>
+  )}
+  {aiResponse && !aiLoading && (
+    <div style={{ flex: 1, overflowY: "auto", marginBottom: 12, padding: 12, background: "#1f1f1f", borderRadius: 8, fontSize: 12.5, color: "rgba(255,255,255,0.75)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+      {aiResponse}
+    </div>
+  )}
+
+  {/* Chat input */}
+  <form onSubmit={handleAskAI} style={{ marginTop: "auto" }}>
+    <textarea
+      value={aiPrompt}
+      onChange={e => setAiPrompt(e.target.value)}
+      placeholder="Ask me anything..."
+      onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAskAI(e); }}}
+      style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "#4d4b4b", color: "#fff", fontSize: 12, resize: "none", minHeight: 60, boxSizing: "border-box", fontFamily: "inherit" }}
+    />
+    <button
+      type="submit"
+      disabled={aiLoading || !aiPrompt.trim()}
+      style={{ width: "100%", marginTop: 8, padding: "8px", borderRadius: 6, border: "none", background: "#38940a", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+      {aiLoading ? "Thinking..." : "Ask AI ↵"}
+    </button>
+  </form>
+</div>
 
     </div>
   );

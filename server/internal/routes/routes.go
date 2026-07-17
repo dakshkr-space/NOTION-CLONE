@@ -15,6 +15,8 @@ func Setup(app *fiber.App) {
 	auth.Get("/google/callback", handlers.GoogleCallback)
 	// PUBLIC shared page route - no auth needed
 	app.Get("/shared/:token", handlers.GetSharedPage)
+	// AI endpoint
+	app.Post("/ai/ask", middleware.Protected, handlers.AskAI)
 
 	pages := app.Group("/pages", middleware.Protected)
 	pages.Post("/", handlers.CreatePage)

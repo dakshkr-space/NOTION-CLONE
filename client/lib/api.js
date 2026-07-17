@@ -140,3 +140,22 @@ export async function getSharedPage(token) {
   if (!res.ok) throw new Error(data.error || "Page not found");
   return data;
 }
+
+// Ask AI with optional page context
+export async function askAI(prompt, pageTitle = "", pageContent = "") {
+  const res = await fetch(`${API_BASE}/ai/ask`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({
+      prompt,
+      page_title: pageTitle,
+      page_content: pageContent,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "AI request failed");
+  return data;
+}
