@@ -26,7 +26,15 @@ export default function DashboardPage() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiResponse, setAiResponse] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchMatch, setSearchMatch] = useState("");
 
+  const searchResults = searchQuery.trim() === "" ? [] : pages.filter(page =>
+  page.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  (page.content && page.content.toLowerCase().includes(searchQuery.toLowerCase()))
+);
+ 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get("token");
@@ -54,6 +62,7 @@ export default function DashboardPage() {
 }
     fetchPages();
   }, []);
+
 
   async function fetchPages() {
     setLoadingPages(true);
@@ -276,28 +285,33 @@ async function handleAskAI(e) {
             </span>
           </div>
           <div style={{ display: "flex", gap: 2 }}>
-            {["bi bi-search", "bi bi-plus-lg"].map((icon, i) => (
-              <button key={i} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.45)", cursor: "pointer", width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}
-                onClick={i === 1 ? () => setSelectedPage(null) : undefined}>
-                <i className={icon}></i>
-              </button>
-            ))}
+           <button style={{ background: "none", border: "none", color: "rgba(255,255,255,0.45)", cursor: "pointer", width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}
+            onClick={() => setSelectedPage(null)}>
+            <i className="bi bi-plus-lg"></i>
+            </button>
           </div>
         </div>
 
         {/* Nav items */}
         <div style={{ padding: "8px 6px 4px 6px", flex: 1, overflowY: "auto" }}>
-          {[
-            { icon: "bi bi-house", label: "Home" },
-            { icon: "bi bi-search", label: "Search", shortcut: "⌘K" },
-            { icon: "bi bi-inbox", label: "Inbox" },
-          ].map((item, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 13.5, color: "rgba(255,255,255,0.72)", minHeight: 32 }}>
-              <i className={item.icon} style={{ fontSize: 14, width: 18, textAlign: "center" }}></i>
-              <span style={{ flex: 1, fontWeight: 450 }}>{item.label}</span>
-              {item.shortcut && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>{item.shortcut}</span>}
-            </div>
-          ))}
+        {[
+         { icon: "bi bi-house", label: "Home" },
+         { icon: "bi bi-inbox", label: "Inbox" },
+         ].map((item, i) => (
+         <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 13.5, color: "rgba(255,255,255,0.72)", minHeight: 32 }}>
+         <i className={item.icon} style={{ fontSize: 14, width: 18, textAlign: "center" }}></i>
+         <span style={{ flex: 1, fontWeight: 450 }}>{item.label}</span>
+         </div> 
+         ))}
+
+         {/* Search item — separate for clickable */}
+         <div
+          onClick={() => { setSearchOpen(true); setSearchQuery(""); }}
+          style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 13.5, color: "rgba(255,255,255,0.72)", minHeight: 32 }}>
+          <i className="bi bi-search" style={{ fontSize: 14, width: 18, textAlign: "center" }}></i>
+          <span style={{ flex: 1, fontWeight: 450 }}>Search</span>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>⌘K</span>
+          </div>
 
         {/* Workspace pages */}
 {!!(user?.team_id) && (
@@ -354,16 +368,13 @@ async function handleAskAI(e) {
           <h1 style={{ fontSize: 22, fontWeight: 700, color: "rgba(255,255,255,0.9)", margin: 0 }}>
             {selectedPage ? selectedPage.title : "Notes"}
           </h1>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button style={{ background: "none", border: "none", color: "#f0f4ff", cursor: "pointer", fontSize: 16 }}>
-              <i className="bi bi-search"></i>
-            </button>
-            <button
-              onClick={() => setSelectedPage(null)}
-              style={{ background: "#38940a", border: "none", color: "white", padding: "8px 12px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}>
-              New note ＋
-            </button>
-          </div>
+<div style={{ display: "flex", gap: 10 }}>
+  <button
+    onClick={() => { setSearchOpen(true); setSearchQuery(""); }}
+    style={{ background: "none", border: "none", color: "#f0f4ff", cursor: "pointer", fontSize: 16 }}>
+    <i className="bi bi-search"></i>
+  </button>
+</div>
         </div>
 
         {error && <p style={{ color: "#ff6b6b", padding: "8px 24px", margin: 0, fontSize: 13 }}>{error}</p>}
@@ -404,7 +415,12 @@ async function handleAskAI(e) {
     </button>
   </div>
 )}
-
+     {searchMatch && selectedPage?.content?.toLowerCase().includes(searchMatch.toLowerCase()) && (
+  <div style={{ background: "#1a2a1a", border: "1px solid rgba(56,148,10,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#89ba5c" }}>
+    🔍 Showing page with match for <strong>"{searchMatch}"</strong>
+    <button onClick={() => setSearchMatch("")} style={{ marginLeft: 10, background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 11 }}>✕ clear</button>
+  </div>
+)}
                 <RichTextEditor
                  content={selectedPage.content || ""}
                   editable={true}
@@ -562,7 +578,87 @@ async function handleAskAI(e) {
     </button>
   </form>
 </div>
+     
+{/* ── SEARCH MODAL ── */}
+{searchOpen && (
+  <div
+    onClick={() => setSearchOpen(false)}
+    style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 120 }}>
+    <div
+      onClick={e => e.stopPropagation()}
+      style={{ width: "100%", maxWidth: 560, background: "#1c1a1a", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 24px 60px rgba(0,0,0,0.6)", overflow: "hidden" }}>
+      
+      {/* Search input */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <i className="bi bi-search" style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}></i>
+        <input
+          autoFocus
+          type="text"
+          placeholder="Search pages..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          onKeyDown={e => e.key === "Escape" && setSearchOpen(false)}
+          style={{ flex: 1, background: "none", border: "none", outline: "none", color: "#fff", fontSize: 14 }}
+        />
+        <button
+          onClick={() => setSearchOpen(false)}
+          style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 12 }}>
+          ESC
+        </button>
+      </div>
 
+      {/* Search results */}
+      <div style={{ maxHeight: 360, overflowY: "auto" }}>
+        {searchQuery.trim() === "" ? (
+          <div style={{ padding: "20px 16px", fontSize: 13, color: "rgba(255,255,255,0.3)", textAlign: "center" }}>
+            Type to search your pages...
+          </div>
+        ) : searchResults.length === 0 ? (
+          <div style={{ padding: "20px 16px", fontSize: 13, color: "rgba(255,255,255,0.3)", textAlign: "center" }}>
+            No pages found for "{searchQuery}"
+          </div>
+        ) : (
+          searchResults.map(page => (
+            <div
+              key={page.id}
+              onClick={() => { setSelectedPage(page); setSearchMatch(searchQuery); setSearchOpen(false); setSearchQuery(""); }}
+              style={{ padding: "12px 16px", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <i className="bi bi-file-text" style={{ color: "rgba(255,255,255,0.3)", fontSize: 13 }}></i>
+                <span style={{ fontSize: 13.5, color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>{page.title}</span>
+              </div>
+              {page.content && (
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", margin: "4px 0 0 22px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+               {(() => {
+                 const plain = page.content.replace(/<[^>]*>/g, "");
+                  const idx = plain.toLowerCase().indexOf(searchQuery.toLowerCase());
+                   if (idx === -1) return plain.slice(0, 80);
+                  const start = Math.max(0, idx - 30);
+                   const excerpt = plain.slice(start, start + 100);
+                   const matchStart = idx - start;
+                    const matchEnd = matchStart + searchQuery.length;
+                return (
+                <>
+             {excerpt.slice(0, matchStart)}
+              <mark style={{ background: "#38940a", color: "#fff", borderRadius: 2, padding: "0 2px" }}>
+               {excerpt.slice(matchStart, matchEnd)}
+             </mark>
+              {excerpt.slice(matchEnd)}
+           </>
+               );
+             })()}
+              </p>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  </div>
+)}
+    
     </div>
   );
 }
