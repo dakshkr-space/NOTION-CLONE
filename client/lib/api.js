@@ -159,3 +159,13 @@ export async function askAI(prompt, pageTitle = "", pageContent = "") {
   if (!res.ok) throw new Error(data.error || "AI request failed");
   return data;
 }
+
+export async function deletePage(id) {
+  const res = await fetch(`${API_BASE}/pages/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to delete page");
+  return data;
+}

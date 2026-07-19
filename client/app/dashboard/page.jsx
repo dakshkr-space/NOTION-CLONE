@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getPages, createPage, createSubPage, getChildPages, updatePage, sharePage, askAI, getUser, getToken, clearAuth } from "../../lib/api";
+import { getPages, createPage, createSubPage, getChildPages, updatePage, sharePage, askAI, deletePage, getUser, getToken, clearAuth } from "../../lib/api";
 import RichTextEditor from "../../components/RichTextEditor";
 
 export default function DashboardPage() {
@@ -29,6 +29,9 @@ export default function DashboardPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMatch, setSearchMatch] = useState("");
+  const [aiHistory, setAiHistory] = useState([]);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
 
   const searchResults = searchQuery.trim() === "" ? [] : pages.filter(page =>
   page.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -155,17 +158,45 @@ async function handleShare() {
   }
 }
 
+async function handleDeletePage(page) {
+  if (!confirm(`Delete "${page.title}"? This cannot be undone.`)) return;
+  try {
+    await deletePage(page.id);
+    setPages(prev => prev.filter(p => p.id !== page.id));
+    setSelectedPage(null);
+  } catch (err) {
+    setError(err.message);
+  }
+}
+
+async function handleEditTitle(e) {
+  e.preventDefault();
+  if (!newTitle.trim()) return;
+  try {
+    await updatePage(selectedPage.id, newTitle, selectedPage.content);
+    setSelectedPage(prev => ({ ...prev, title: newTitle }));
+    setPages(prev => prev.map(p => p.id === selectedPage.id ? { ...p, title: newTitle } : p));
+    setEditingTitle(false);
+  } catch (err) {
+    setError(err.message);
+  }
+}
+
 async function handleAskAI(e) {
   e.preventDefault();
   if (!aiPrompt.trim()) return;
   setAiLoading(true);
-  setAiResponse("");
   try {
     const data = await askAI(
       aiPrompt,
       selectedPage?.title || "",
       selectedPage?.content || ""
     );
+    // Add to history
+    setAiHistory(prev => [...prev, 
+      { role: "user", text: aiPrompt },
+      { role: "ai", text: data.response }
+    ]);
     setAiResponse(data.response);
   } catch (err) {
     setAiResponse("Error: " + err.message);
@@ -384,7 +415,25 @@ async function handleAskAI(e) {
           {selectedPage ? (
             /* ── OPEN PAGE VIEW ── */
             <div>
-              <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: "rgba(255,255,255,0.93)" }}>{selectedPage.title}</h2>
+               {editingTitle ? (
+  <form onSubmit={handleEditTitle} style={{ marginBottom: 8 }}>
+    <input
+      autoFocus
+      value={newTitle}
+      onChange={e => setNewTitle(e.target.value)}
+      onBlur={() => setEditingTitle(false)}
+      onKeyDown={e => e.key === "Escape" && setEditingTitle(false)}
+      style={{ fontSize: 28, fontWeight: 700, background: "none", border: "none", borderBottom: "2px solid #38940a", outline: "none", color: "#fff", width: "100%", paddingBottom: 4 }}
+    />
+  </form>
+) : (
+  <h2
+    onClick={() => { setEditingTitle(true); setNewTitle(selectedPage.title); }}
+    title="Click to edit title"
+    style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: "rgba(255,255,255,0.93)", cursor: "text" }}>
+    {selectedPage.title} <span style={{ fontSize: 14, color: "rgba(255,255,255,0.2)", fontWeight: 400 }}>✏️</span>
+  </h2>
+)}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
   <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", margin: 0 }}>
     Created {new Date(selectedPage.created_at).toLocaleDateString()}
@@ -395,12 +444,17 @@ async function handleAskAI(e) {
         {saveStatus}
       </span>
     )}
-    <button
-      onClick={handleShare}
-      disabled={sharing}
-      style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: "#38940a", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
-      {sharing ? "Generating..." : "🔗 Share"}
-    </button>
+<button
+  onClick={handleShare}
+  disabled={sharing}
+  style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: "#38940a", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+  {sharing ? "Generating..." : "🔗 Share"}
+</button>
+<button
+  onClick={() => handleDeletePage(selectedPage)}
+  style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: "rgba(255,80,80,0.15)", color: "#ff6b6b", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+  🗑 Delete
+</button>
   </div>
 </div>
 
@@ -533,33 +587,58 @@ async function handleAskAI(e) {
       : "Open a page to give AI context, or ask anything."}
   </p>
 
-  {/* Quick action buttons */}
-  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
-    {[
-      { label: "📝 Summarize this page", prompt: "Summarize this page in 3 bullet points." },
-      { label: "📋 Generate meeting notes", prompt: "Convert this page content into structured meeting notes." },
-      { label: "✍️ Improve writing", prompt: "Improve the writing quality of this page content." },
-    ].map((action, i) => (
-      <button
-        key={i}
-        onClick={() => setAiPrompt(action.prompt)}
-        style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: "#1f1f1f", color: "rgba(255,255,255,0.6)", fontSize: 12, cursor: "pointer", textAlign: "left" }}>
-        {action.label}
-      </button>
-    ))}
-  </div>
+{/* Quick action buttons */}
+<div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+  {[
+    { label: "📝 Summarize this page", prompt: "Summarize this page in 3 concise bullet points." },
+    { label: "📋 Generate meeting notes", prompt: "Convert this page content into structured meeting notes with attendees, discussion points, and decisions." },
+    { label: "✍️ Improve writing", prompt: "Improve the writing quality, clarity and flow of this page content. Show the improved version." },
+    { label: "✅ Extract action items", prompt: "Extract all action items, tasks and todos from this page. Format them as a numbered checklist." },
+    { label: "💡 Generate content", prompt: "Based on the page title and existing content, generate additional relevant content to expand this page." },
+  ].map((action, i) => (
+    <button
+      key={i}
+      onClick={() => setAiPrompt(action.prompt)}
+      style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: "#1f1f1f", color: "rgba(255,255,255,0.6)", fontSize: 12, cursor: "pointer", textAlign: "left" }}>
+      {action.label}
+    </button>
+  ))}
+</div>
 
-  {/* AI response area */}
-  {aiLoading && (
-    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 12, padding: 10, background: "#1f1f1f", borderRadius: 6 }}>
-      Thinking...
-    </div>
-  )}
-  {aiResponse && !aiLoading && (
-    <div style={{ flex: 1, overflowY: "auto", marginBottom: 12, padding: 12, background: "#1f1f1f", borderRadius: 8, fontSize: 12.5, color: "rgba(255,255,255,0.75)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-      {aiResponse}
-    </div>
-  )}
+{/* Conversation history */}
+{aiHistory.length > 0 && (
+  <div style={{ flex: 1, overflowY: "auto", marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+    {aiHistory.map((msg, i) => (
+      <div key={i} style={{
+        padding: "8px 12px",
+        borderRadius: 8,
+        fontSize: 12,
+        lineHeight: 1.6,
+        whiteSpace: "pre-wrap",
+        background: msg.role === "user" ? "rgba(56,148,10,0.15)" : "#1f1f1f",
+        color: msg.role === "user" ? "#89ba5c" : "rgba(255,255,255,0.75)",
+        alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
+        maxWidth: "90%",
+      }}>
+        {msg.text}
+      </div>
+    ))}
+    {aiLoading && (
+      <div style={{ padding: "8px 12px", borderRadius: 8, fontSize: 12, background: "#1f1f1f", color: "rgba(255,255,255,0.4)", alignSelf: "flex-start" }}>
+        Thinking...
+      </div>
+    )}
+  </div>
+)}
+
+{/* Clear history button */}
+{aiHistory.length > 0 && (
+  <button
+    onClick={() => { setAiHistory([]); setAiResponse(""); }}
+    style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", background: "none", border: "none", cursor: "pointer", marginBottom: 8, textAlign: "left" }}>
+    ✕ Clear conversation
+  </button>
+)}
 
   {/* Chat input */}
   <form onSubmit={handleAskAI} style={{ marginTop: "auto" }}>
