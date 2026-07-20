@@ -3,7 +3,6 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
-import CodeBlock from "@tiptap/extension-code-block";
 import { useEffect } from "react";
 
 // Toolbar button component
@@ -42,7 +41,6 @@ export default function RichTextEditor({ content, onChange, editable = true }) {
       StarterKit,
       TaskList,
       TaskItem.configure({ nested: true }),
-      CodeBlock,
     ],
     content: content || "",
     editable,
