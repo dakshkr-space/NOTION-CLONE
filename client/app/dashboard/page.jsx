@@ -32,12 +32,47 @@ export default function DashboardPage() {
   const [aiHistory, setAiHistory] = useState([]);
   const [editingTitle, setEditingTitle] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [showTemplates, setShowTemplates] = useState(false);
 
   const searchResults = searchQuery.trim() === "" ? [] : pages.filter(page =>
   page.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
   (page.content && page.content.toLowerCase().includes(searchQuery.toLowerCase()))
 );
  
+const TEMPLATES = [
+  {
+    icon: "📋",
+    name: "Meeting Notes",
+    title: "Meeting Notes — " + new Date().toLocaleDateString(),
+    content: "<h2>Meeting Details</h2><p><strong>Date:</strong> " + new Date().toLocaleDateString() + "</p><p><strong>Attendees:</strong> </p><h2>Agenda</h2><ul><li><p>Item 1</p></li><li><p>Item 2</p></li></ul><h2>Discussion</h2><p></p><h2>Action Items</h2><ul><li><p> </p></li></ul><h2>Next Steps</h2><p></p>"
+  },
+  {
+    icon: "🚀",
+    name: "Project Doc",
+    title: "Project — ",
+    content: "<h1>Project Overview</h1><p></p><h2>Goals</h2><ul><li><p>Goal 1</p></li><li><p>Goal 2</p></li></ul><h2>Timeline</h2><p><strong>Start:</strong> </p><p><strong>End:</strong> </p><h2>Team</h2><p></p><h2>Tasks</h2><ul data-type=\"taskList\"><li data-type=\"taskItem\" data-checked=\"false\"><label><input type=\"checkbox\"></label><div><p>Task 1</p></div></li><li data-type=\"taskItem\" data-checked=\"false\"><label><input type=\"checkbox\"></label><div><p>Task 2</p></div></li></ul><h2>Notes</h2><p></p>"
+  },
+  {
+    icon: "📚",
+    name: "Study Notes",
+    title: "Study Notes — ",
+    content: "<h1>Topic</h1><h2>Key Concepts</h2><ul><li><p>Concept 1</p></li><li><p>Concept 2</p></li></ul><h2>Summary</h2><p></p><h2>Important Points</h2><ul><li><p>Point 1</p></li><li><p>Point 2</p></li></ul><h2>Questions</h2><ul><li><p>Question 1?</p></li></ul><h2>References</h2><p></p>"
+  },
+  {
+    icon: "📝",
+    name: "Daily Journal",
+    title: "Journal — " + new Date().toLocaleDateString(),
+    content: "<h2>Today's Goals</h2><ul data-type=\"taskList\"><li data-type=\"taskItem\" data-checked=\"false\"><label><input type=\"checkbox\"></label><div><p></p></div></li></ul><h2>Notes</h2><p></p><h2>Wins</h2><p></p><h2>Tomorrow</h2><p></p>"
+  },
+  {
+    icon: "🐛",
+    name: "Bug Report",
+    title: "Bug — ",
+    content: "<h2>Description</h2><p></p><h2>Steps to Reproduce</h2><ul><li><p>Step 1</p></li><li><p>Step 2</p></li></ul><h2>Expected Behaviour</h2><p></p><h2>Actual Behaviour</h2><p></p><h2>Screenshots</h2><p></p><h2>Fix</h2><p></p>"
+  },
+];
+
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get("token");
@@ -528,8 +563,15 @@ async function handleAskAI(e) {
             /* ── NOTES LIST VIEW ── */
             <>
               {/* Create page form */}
-              <div style={{ background: "#191919", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 20, marginBottom: 28 }}>
-                <h3 style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 16, fontWeight: 500 }}>New note</h3>
+       <div style={{ background: "#191919", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 20, marginBottom: 28 }}>
+  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+    <h3 style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", fontWeight: 500, margin: 0 }}>New note</h3>
+    <button
+      onClick={() => setShowTemplates(true)}
+      style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "#1f1f1f", color: "rgba(255,255,255,0.6)", fontSize: 12, cursor: "pointer" }}>
+      📄 Use Template
+    </button>
+  </div>
                 <form onSubmit={handleCreate}>
                   <input
                     type="text"
@@ -658,6 +700,41 @@ async function handleAskAI(e) {
   </form>
 </div>
      
+
+{/* ── TEMPLATES MODAL ── */}
+{showTemplates && (
+  <div
+    onClick={() => setShowTemplates(false)}
+    style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div
+      onClick={e => e.stopPropagation()}
+      style={{ width: "100%", maxWidth: 520, background: "#1c1a1a", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 24px 60px rgba(0,0,0,0.6)", padding: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h3 style={{ margin: 0, fontSize: 16, color: "#fff" }}>Choose a template</h3>
+        <button onClick={() => setShowTemplates(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 14 }}>✕</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {TEMPLATES.map((template, i) => (
+          <div
+            key={i}
+            onClick={() => {
+              setTitle(template.title);
+              setContent(template.content);
+              setShowTemplates(false);
+            }}
+            style={{ padding: "14px 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#111418", cursor: "pointer" }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = "#38940a"}
+            onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"}>
+            <div style={{ fontSize: 22, marginBottom: 8 }}>{template.icon}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: "#eee", marginBottom: 4 }}>{template.name}</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Pre-filled template</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
 {/* ── SEARCH MODAL ── */}
 {searchOpen && (
   <div
