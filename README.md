@@ -18,9 +18,22 @@ A full-stack Notion-inspired note-taking and collaboration app built with Go (Fi
 ### Pages
 - Create, read, update, delete pages
 - Rich text editing via TipTap — headings (H1/H2/H3), bold, italic, strikethrough, bullet lists, numbered lists, checklists, code blocks, blockquotes
-- Auto-save — content saves automatically 1 second after the user stops typing with live Saving/Saved status
+- Debounced Auto-Save: Real-time background persistence (1s debounce) with visual `Saving...` / `Saved ✓`
 - Pages scoped per user with ownership checks on every request
-- Share pages via public link — anyone with the link can view without logging in
+- Public Page Sharing: Generate unique, public read-only links for external sharing without requiring auth
+
+### Pre-built Page Templates
+- Quick-start templates available via a dedicated template picker:
+  - 📋 **Meeting Notes** (Agenda, Discussion, Action Items)[cite: 1]
+  - 🚀 **Project Doc** (Goals, Timeline, Task Checklist)[cite: 1]
+  - 📚 **Study Notes** (Key Concepts, Questions, References)[cite: 1]
+  - 📝 **Daily Journal** (Goals, Wins, Reflection)[cite: 1]
+  - 🐛 **Bug Report** (Steps to Reproduce, Expected vs Actual)[cite: 1]
+
+
+### Global Full-Text Search
+- Instant Search (`⌘K`): Modal search index across both page titles and HTML body content
+- Smart Excerpts: Highlighted matching text snippets in search results with one-click page navigation
 
 ### Nested Pages
 - Create subpages inside any page
@@ -39,10 +52,14 @@ A full-stack Notion-inspired note-taking and collaboration app built with Go (Fi
 
 ### AI Workspace (Groq — Llama 3.3)
 - AI assistant panel in the right sidebar
-- Summarize current page in bullet points
-- Generate structured meeting notes from page content
-- Improve writing quality
-- Ask any question with current page as context
+- Context-Aware AI Assistant: Pulls content directly from the active open page[cite: 1, 4].
+- One-Click Action Chips:
+   - Summarize current page in bullet points
+   - Generate structured meeting notes from page content
+   - Improve writing quality
+   - Ask any question with current page as context
+   - Generate additional relevant content
+- Interactive Conversation History: Chat thread session with option to clear history
 - Powered by Groq's free API running Llama 3.3 70B
 
 ### Infrastructure
