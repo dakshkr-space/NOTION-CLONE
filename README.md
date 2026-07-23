@@ -139,9 +139,3 @@ GROQ_API_KEY=groq_api_key
 | DELETE | `/teams/members/:userId` | team_head/admin | Remove team member |
 | PUT | `/teams/promote/:userId` | admin | Change user role |
 | POST | `/ai/ask` | JWT | Ask AI about page content |
-
-## Roadmap
-
-- [ ] Real-time collaboration via WebSockets
-- [ ] Landing page
-- [ ] Delete and edit pages from dashboard
