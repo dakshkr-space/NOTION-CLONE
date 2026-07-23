@@ -23,7 +23,7 @@ func Connect() {       //function to initialise connection
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	database.AutoMigrate(&models.User{}, &models.Page{}, &models.Team{}) 
+	database.AutoMigrate(&models.User{}, &models.Page{}, &models.Team{},&models.PageVersion{},&models.Comment{},) 
    //Automigrate goes through each struct in user.go, models.go and team.go, modifies if anything needed,(adding missing columns)
 
 	DB = database

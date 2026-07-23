@@ -161,3 +161,18 @@ func GetSharedPage(c *fiber.Ctx) error {
 
 	return c.JSON(page)
 }
+
+
+func toUint(val interface{}) uint {
+	if f, ok := val.(float64); ok { return uint(f) }
+	if i, ok := val.(int); ok { return uint(i) }
+	if u, ok := val.(uint); ok { return u }
+	return 0
+}
+
+func toUintOK(val interface{}) (uint, bool) {
+	if f, ok := val.(float64); ok { return uint(f), true }
+	if i, ok := val.(int); ok { return uint(i), true }
+	if u, ok := val.(uint); ok { return u, true }
+	return 0, false
+}

@@ -17,6 +17,12 @@ func Setup(app *fiber.App) {
 	app.Get("/shared/:token", handlers.GetSharedPage)
 	// AI endpoint
 	app.Post("/ai/ask", middleware.Protected, handlers.AskAI)
+	// Version History routes
+	app.Get("/pages/:id/versions", middleware.Protected, handlers.GetPageVersions)
+	app.Post("/pages/:id/versions/:versionId/restore", middleware.Protected, handlers.RestorePageVersion)
+	// Comment & Mention routes
+	app.Get("/pages/:id/comments", middleware.Protected, handlers.GetComments)
+	app.Post("/pages/:id/comments", middleware.Protected, handlers.AddComment)
 
 	pages := app.Group("/pages", middleware.Protected)
 	pages.Post("/", handlers.CreatePage)
