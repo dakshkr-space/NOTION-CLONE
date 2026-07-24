@@ -88,6 +88,10 @@ func AskAI(c *fiber.Ctx) error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != 200 {
+		return c.Status(resp.StatusCode).JSON(fiber.Map{"error": "AI service error or invalid API key"})
+	}
+
 	var grokResp GrokResponse
 	if err := json.NewDecoder(resp.Body).Decode(&grokResp); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to parse response"})
