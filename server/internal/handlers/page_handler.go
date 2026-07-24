@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"log"
 	"crypto/rand"
 	"encoding/hex"
+	"log"
 
 	"github.com/dakshkr-space/NOTION-CLONE/internal/db"
 	"github.com/dakshkr-space/NOTION-CLONE/internal/models"
@@ -67,22 +67,6 @@ func GetPage(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Page not found"})
 	}
 
-	// Auto-create Version History Snapshot
-	pageIDVal := toUint(c.Params("id"))
-	if pageIDVal > 0 {
-		contentToSave := page.Content
-		
-		v := models.PageVersion{
-			PageID:  pageIDVal,
-			Content: contentToSave,
-		}
-		if err := db.DB.Create(&v).Error; err == nil {
-			log.Printf("[VERSION HISTORY] Created snapshot ID %d for Page %d", v.ID, pageIDVal)
-		} else {
-			log.Printf("[VERSION HISTORY ERROR] Failed to create snapshot: %v", err)
-		}
-	}
-
 	return c.JSON(page)
 }
 
@@ -103,6 +87,17 @@ func UpdatePage(c *fiber.Ctx) error {
 
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
+	}
+
+	version := models.PageVersion{
+		PageID:      page.ID,
+		Title:       page.Title,
+		Content:     page.Content,
+		CreatedByID: userID,
+	}
+
+	if err := db.DB.Create(&version).Error; err != nil {
+		log.Printf("failed to create page version: %v", err)
 	}
 
 	if err := db.DB.Model(&page).Updates(models.Page{
