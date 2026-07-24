@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"crypto/rand"
 	"encoding/hex"
 
@@ -64,6 +65,22 @@ func GetPage(c *fiber.Ctx) error {
 
 	if err := db.DB.Where("id = ? AND user_id = ?", id, userID).First(&page).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Page not found"})
+	}
+
+	// Auto-create Version History Snapshot
+	pageIDVal := toUint(c.Params("id"))
+	if pageIDVal > 0 {
+		contentToSave := page.Content
+		
+		v := models.PageVersion{
+			PageID:  pageIDVal,
+			Content: contentToSave,
+		}
+		if err := db.DB.Create(&v).Error; err == nil {
+			log.Printf("[VERSION HISTORY] Created snapshot ID %d for Page %d", v.ID, pageIDVal)
+		} else {
+			log.Printf("[VERSION HISTORY ERROR] Failed to create snapshot: %v", err)
+		}
 	}
 
 	return c.JSON(page)
@@ -160,19 +177,4 @@ func GetSharedPage(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(page)
-}
-
-
-func toUint(val interface{}) uint {
-	if f, ok := val.(float64); ok { return uint(f) }
-	if i, ok := val.(int); ok { return uint(i) }
-	if u, ok := val.(uint); ok { return u }
-	return 0
-}
-
-func toUintOK(val interface{}) (uint, bool) {
-	if f, ok := val.(float64); ok { return uint(f), true }
-	if i, ok := val.(int); ok { return uint(i), true }
-	if u, ok := val.(uint); ok { return u, true }
-	return 0, false
 }
