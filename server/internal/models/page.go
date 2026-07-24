@@ -14,6 +14,7 @@ type Page struct {
     Title    string `gorm:"not null" json:"title"`
     Content  string `gorm:"type:text" json:"content"`
     ShareToken *string `gorm:"unique" json:"share_token"`
+    OrderIndex int `gorm:"default:0" json:"order_index"`//dragdrop
 
     CreatedAt time.Time `json:"created_at"`
     UpdatedAt time.Time `json:"updated_at"`
