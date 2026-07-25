@@ -21,6 +21,8 @@ A full-stack Notion-inspired note-taking and collaboration app built with Go (Fi
 - Debounced Auto-Save: Real-time background persistence (1s debounce) with visual `Saving...` / `Saved ✓`
 - Pages scoped per user with ownership checks on every request
 - Public Page Sharing: Generate unique, public read-only links for external sharing without requiring auth
+- Page Version History: Automatically saves page versions and lets users view or restore an earlier version.
+- Page Comments: Add and review comments on individual pages for clearer collaboration.
 
 ### Pre-built Page Templates
 - Quick-start templates available via a dedicated template picker:
@@ -43,6 +45,7 @@ A full-stack Notion-inspired note-taking and collaboration app built with Go (Fi
 ### Workspace Organization
 - Sidebar splits pages into Workspace (team pages) and Personal sections
 - Workspace section only visible to users who belong to a team
+- Drag-and-Drop Page Organization: Reorder workspace and personal pages by dragging them into the preferred position in the sidebar.
 
 ### Teams & Role-Based Access Control
 - Create teams (creator becomes team_head)
