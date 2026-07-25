@@ -7,7 +7,9 @@ import (
 
 	"github.com/dakshkr-space/NOTION-CLONE/internal/db"
 	"github.com/dakshkr-space/NOTION-CLONE/internal/models"
+	"github.com/dakshkr-space/NOTION-CLONE/internal/realtime"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/websocket/v2"
 	"gorm.io/gorm"
 )
 
@@ -107,6 +109,10 @@ func UpdatePage(c *fiber.Ctx) error {
 	}).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update page"})
 	}
+
+	page.Title = body.Title
+	page.Content = body.Content
+	realtime.DefaultHub.BroadcastPageUpdate(page.ID, page.Title, page.Content)
 
 	return c.JSON(page)
 }
@@ -208,4 +214,29 @@ func ReorderPages(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"message": "Pages reordered successfully"})
+}
+
+// SharedPageWebSocket streams owner updates to anyone with a valid shared link.
+func SharedPageWebSocket(conn *websocket.Conn) {
+	token := conn.Params("token")
+
+	var page models.Page
+	if err := db.DB.Where("share_token = ?", token).First(&page).Error; err != nil {
+		_ = conn.WriteJSON(fiber.Map{"type": "error", "error": "Page not found or link expired"})
+		return
+	}
+
+	client, unsubscribe := realtime.DefaultHub.Subscribe(page.ID, conn)
+	defer unsubscribe()
+
+	if err := realtime.DefaultHub.SendSnapshot(client, page.ID, page.Title, page.Content, page.UpdatedAt); err != nil {
+		return
+	}
+
+	// Shared viewers are read-only. Reading keeps the connection open until it closes.
+	for {
+		if _, _, err := conn.ReadMessage(); err != nil {
+			return
+		}
+	}
 }

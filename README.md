@@ -32,6 +32,8 @@ A full-stack Notion-inspired note-taking and collaboration app built with Go (Fi
   -  Daily Journal (Goals, Wins, Reflection)[cite: 1]
   -  Bug Report (Steps to Reproduce, Expected vs Actual)[cite: 1]
 
+### Real-Time Collaboration
+  - Live, multi-user document editing powered by standard WebSockets, ensuring team members see text updates instantly without page refreshes.
 
 ### Global Full-Text Search
 - Instant Search (`⌘K`): Modal search index across both page titles and HTML body content
@@ -69,6 +71,7 @@ A full-stack Notion-inspired note-taking and collaboration app built with Go (Fi
 - PostgreSQL with GORM auto-migration
 - CORS configured for separate frontend/backend dev servers
 - Environment-based config via .env (never committed)
+
 
 ## Project Structure
 
