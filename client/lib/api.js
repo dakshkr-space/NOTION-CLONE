@@ -246,3 +246,8 @@ export async function reorderPages(pages) {
   if (!res.ok) throw new Error(data.error || "Failed to reorder pages");
   return data;
 }
+
+// WebSocket endpoint for read-only viewers of a shared page.
+export function getSharedPageSocketURL(token) {
+  return API_BASE.replace(/^http/, "ws") + "/ws/shared/" + token;
+}

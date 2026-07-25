@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { getSharedPage } from "../../../lib/api";
+import { getSharedPage, getSharedPageSocketURL } from "../../../lib/api";
 import RichTextEditor from "../../../components/RichTextEditor";
 
 export default function SharedPage() {
@@ -9,6 +9,7 @@ export default function SharedPage() {
   const [page, setPage] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [live, setLive] = useState(false);
 
   useEffect(() => {
     async function fetchPage() {
@@ -23,6 +24,31 @@ export default function SharedPage() {
     }
     fetchPage();
   }, []);
+
+  useEffect(() => {
+    if (!params.token) return;
+
+    let active = true;
+    const socket = new WebSocket(getSharedPageSocketURL(params.token));
+    socket.onopen = () => active && setLive(true);
+    socket.onclose = () => active && setLive(false);
+    socket.onerror = () => active && setLive(false);
+    socket.onmessage = (event) => {
+      try {
+        const update = JSON.parse(event.data);
+        if (update.type === "page_snapshot" || update.type === "page_updated") {
+          setPage((current) => ({ ...current, title: update.title, content: update.content, updated_at: update.updated_at }));
+        }
+      } catch {
+        // Keep showing the most recently received valid page state.
+      }
+    };
+
+    return () => {
+      active = false;
+      socket.close();
+    };
+  }, [params.token]);
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "#000", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
@@ -57,8 +83,8 @@ export default function SharedPage() {
         <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8, color: "rgba(255,255,255,0.93)" }}>
           {page.title}
         </h1>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 32 }}>
-          Shared page — read only
+        <p style={{ fontSize: 12, color: live ? "#89ba5c" : "rgba(255,255,255,0.3)", marginBottom: 32 }}>
+          {live ? "Live updates connected" : "Shared page — read only"}
         </p>
         <RichTextEditor
           content={page.content || ""}
