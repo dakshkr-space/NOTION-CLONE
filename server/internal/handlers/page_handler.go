@@ -8,6 +8,7 @@ import (
 	"github.com/dakshkr-space/NOTION-CLONE/internal/db"
 	"github.com/dakshkr-space/NOTION-CLONE/internal/models"
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 func CreatePage(c *fiber.Ctx) error {
@@ -172,4 +173,39 @@ func GetSharedPage(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(page)
+}
+
+type ReorderRequest struct {
+	Pages []struct {
+		ID         uint  `json:"id"`
+		OrderIndex int   `json:"order_index"`
+		ParentID   *uint `json:"parent_id"` // for nested pages
+	} `json:"pages"`
+}
+
+func ReorderPages(c *fiber.Ctx) error {
+	var req ReorderRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid payload"})
+	}
+
+	// Update each page's index inside a transaction
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		for _, p := range req.Pages {
+			if err := tx.Model(&models.Page{}).Where("id = ?", p.ID).
+				Updates(map[string]interface{}{
+					"order_index": p.OrderIndex,
+					"parent_id":   p.ParentID,
+				}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to reorder pages"})
+	}
+
+	return c.JSON(fiber.Map{"message": "Pages reordered successfully"})
 }

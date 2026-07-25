@@ -25,6 +25,7 @@ func Setup(app *fiber.App) {
 	app.Post("/pages/:id/comments", middleware.Protected, handlers.AddComment)
 
 	pages := app.Group("/pages", middleware.Protected)
+	pages.Put("/reorder", handlers.ReorderPages)
 	pages.Post("/", handlers.CreatePage)
 	pages.Get("/", handlers.GetPages)
 	pages.Get("/:id", handlers.GetPage)

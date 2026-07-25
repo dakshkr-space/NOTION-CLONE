@@ -109,17 +109,24 @@ export async function createSubPage(title, content, parentId) {
 
 // Update an existing page (used for auto-save)
 export async function updatePage(id, title, content) {
+  if (!id) return;
+  const token = getToken();
+
   const res = await fetch(`${API_BASE}/pages/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
+      Authorization: token ? `Bearer ${token}` : "",
     },
     body: JSON.stringify({ title, content }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to update page");
-  return data;
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `Failed to update page (${res.status})`);
+  }
+
+  return await res.json();
 }
 
 // Generate a share link for a page
@@ -167,5 +174,75 @@ export async function deletePage(id) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to delete page");
+  return data;
+}
+
+export async function getPageVersions(pageId) {
+  const res = await fetch(`${API_BASE}/pages/${pageId}/versions`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+const data = await res.json();
+
+  if (!res.ok) throw new Error(data.error || "Failed to fetch page versions");
+  return data;
+}
+
+export async function restorePageVersion(pageId, versionId) {
+  const res = await fetch(`${API_BASE}/pages/${pageId}/versions/${versionId}/restore`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+const data = await res.json();
+
+  if (!res.ok) throw new Error(data.error || "Failed to restore version");
+  return data;
+}
+
+export async function getComments(pageId) {
+  if (!pageId) return [];
+  const token = getToken();
+
+  const res = await fetch(`${API_BASE}/pages/${pageId}/comments`, {
+    headers: {
+      Authorization: token ? `Bearer ${token}` : "",
+    },
+  });
+
+  if (!res.ok) return [];
+  return await res.json();
+}
+
+export async function addComment(pageId, content) {
+  if (!pageId || !content.trim()) return;
+  const token = getToken();
+
+  const res = await fetch(`${API_BASE}/pages/${pageId}/comments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: token ? `Bearer ${token}` : "",
+    },
+    body: JSON.stringify({ content }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to post comment");
+  }
+
+  return await res.json();
+}
+
+export async function reorderPages(pages) {
+  const res = await fetch(`${API_BASE}/pages/reorder`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({ pages }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to reorder pages");
   return data;
 }

@@ -24,11 +24,11 @@ A full-stack Notion-inspired note-taking and collaboration app built with Go (Fi
 
 ### Pre-built Page Templates
 - Quick-start templates available via a dedicated template picker:
-  - 📋 **Meeting Notes** (Agenda, Discussion, Action Items)[cite: 1]
-  - 🚀 **Project Doc** (Goals, Timeline, Task Checklist)[cite: 1]
-  - 📚 **Study Notes** (Key Concepts, Questions, References)[cite: 1]
-  - 📝 **Daily Journal** (Goals, Wins, Reflection)[cite: 1]
-  - 🐛 **Bug Report** (Steps to Reproduce, Expected vs Actual)[cite: 1]
+  -  Meeting Notes (Agenda, Discussion, Action Items)[cite: 1]
+  -  Project Doc (Goals, Timeline, Task Checklist)[cite: 1]
+  -  Study Notes (Key Concepts, Questions, References)[cite: 1]
+  -  Daily Journal (Goals, Wins, Reflection)[cite: 1]
+  -  Bug Report (Steps to Reproduce, Expected vs Actual)[cite: 1]
 
 
 ### Global Full-Text Search

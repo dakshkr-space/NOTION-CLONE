@@ -48,8 +48,8 @@ if (!emailRegex.test(email)) {
      ? await loginWithEmail(email, password)
      : await registerWithEmail(name, email, password);
      console.log("data from login:", data);
-     localStorage.setItem("token", data.token);
-     localStorage.setItem("user", JSON.stringify(data.user));
+     saveAuth(data.token, data.user);
+     router.replace("/dashboard");
     router.replace("/dashboard");
     } catch (err) {
       setError(err.message);

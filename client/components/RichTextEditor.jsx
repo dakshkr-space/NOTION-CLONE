@@ -44,6 +44,7 @@ export default function RichTextEditor({ content, onChange, editable = true }) {
     ],
     content: content || "",
     editable,
+    immediatelyRender: false,
     onUpdate({ editor }) {
       // Every time content changes, call onChange with the HTML string
       // HTML is stored in your existing `content` column in Postgres
