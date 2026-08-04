@@ -22,7 +22,7 @@ func getGoogleOAuthConfig() *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-		RedirectURL:  "http://localhost:3000/auth/google/callback",
+		RedirectURL:  os.Getenv("BACKEND_URL") + "/auth/google/callback",
 		Scopes: []string{
 			"https://www.googleapis.com/auth/userinfo.email",
 			"https://www.googleapis.com/auth/userinfo.profile",
@@ -75,10 +75,8 @@ func Register(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate token"})
 	}
 
-	return c.Status(201).JSON(fiber.Map{
-		"token": token,
-		"user":  user,
-	})
+	setAuthCookie(c, token)
+	return c.Status(201).JSON(fiber.Map{"user": user})
 }
 
 func Login(c *fiber.Ctx) error {
@@ -111,11 +109,9 @@ func Login(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate token"})
 	}
+	setAuthCookie(c, token)
 
-	return c.JSON(fiber.Map{
-		"token": token,
-		"user":  user,
-	})
+	return c.JSON(fiber.Map{"user": user})
 }
 
 func GoogleLogin(c *fiber.Ctx) error {
@@ -172,8 +168,9 @@ func GoogleCallback(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate token"})
 	}
+	setAuthCookie(c, token)
 
-	return c.Redirect("http://localhost:3001/dashboard?token=" + token)
+	return c.Redirect(os.Getenv("FRONTEND_URL") + "/dashboard") //hide token from frontend
 }
 
 // generateToken now takes the FULL user struct (not just ID)
@@ -197,4 +194,36 @@ func generateToken(user models.User) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+}
+
+func setAuthCookie(c *fiber.Ctx, token string) {
+	c.Cookie(&fiber.Cookie{
+		Name:     "token",
+		Value:    token,
+		HTTPOnly: true,                             // JS cannot read this — the whole point
+		Secure:   os.Getenv("ENV") == "production", // only sent over HTTPS in prod
+		SameSite: "Lax",                            // blocks most CSRF, still works for normal navigation
+		Path:     "/",
+		MaxAge:   7 * 24 * 60 * 60, // 7 days, matches your JWT exp
+	})
+}
+
+func Me(c *fiber.Ctx) error {
+	userID := uint(c.Locals("userID").(float64))
+	var user models.User
+	if err := db.DB.First(&user, userID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+	}
+	return c.JSON(user)
+}
+
+func Logout(c *fiber.Ctx) error {
+	c.Cookie(&fiber.Cookie{
+		Name:     "token",
+		Value:    "",
+		HTTPOnly: true,
+		Path:     "/",
+		MaxAge:   -1, // deletes the cookie immediately
+	})
+	return c.JSON(fiber.Map{"message": "Logged out"})
 }

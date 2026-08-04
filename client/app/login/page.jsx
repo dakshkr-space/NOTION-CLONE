@@ -5,8 +5,7 @@ import {
   loginWithEmail,
   registerWithEmail,
   loginWithGoogle,
-  saveAuth,
-  getToken,
+  getCurrentUser,
 } from "../../lib/api";
 
 export default function LoginPage() {
@@ -18,10 +17,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // STEP 8 equivalent for this file — no more getToken() check.
+  // Ask the backend (via the HttpOnly cookie) whether someone's already logged in.
   useEffect(() => {
-    if (getToken()) {
-      router.replace("/dashboard");
+    async function checkAuth() {
+      const user = await getCurrentUser();
+      if (user) {
+        router.replace("/dashboard");
+      }
     }
+    checkAuth();
   }, []);
 
   async function handleSubmit(e) {
@@ -31,26 +36,25 @@ export default function LoginPage() {
       setError("Email and password are required.");
       return;
     }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-if (!emailRegex.test(email)) {
-  setError("Please enter a valid email address.");
-  return;
-}
-
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
     if (tab === "register" && !name) {
       setError("Name is required.");
       return;
     }
     setLoading(true);
     try {
-     const data = tab === "login"
-     ? await loginWithEmail(email, password)
-     : await registerWithEmail(name, email, password);
-     console.log("data from login:", data);
-     saveAuth(data.token, data.user);
-     router.replace("/dashboard");
-    router.replace("/dashboard");
+      // saveAuth() is gone — the backend sets the HttpOnly cookie itself
+      // on a successful response, nothing for the frontend to store.
+      if (tab === "login") {
+        await loginWithEmail(email, password);
+      } else {
+        await registerWithEmail(name, email, password);
+      }
+      router.replace("/dashboard");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -72,7 +76,6 @@ if (!emailRegex.test(email)) {
               />
               <h2>Welcome back</h2>
             </div>
-
             <div className="auth-tabs">
               <button
                 type="button"
@@ -89,7 +92,6 @@ if (!emailRegex.test(email)) {
                 Register
               </button>
             </div>
-
             <form onSubmit={handleSubmit}>
               {tab === "register" && (
                 <div className="field-group">
@@ -105,15 +107,11 @@ if (!emailRegex.test(email)) {
                 <label>Password</label>
                 <input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
-
               {error && <p className="error-text">{error}</p>}
-
               <button className="btn-primary" type="submit" disabled={loading}>
                 {loading ? "Please wait..." : tab === "login" ? "Log in" : "Create account"}
               </button>
-
               <div className="auth-divider"><span>or</span></div>
-
               <button className="btn-google" type="button" onClick={loginWithGoogle}>
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" />
                 Continue with Google

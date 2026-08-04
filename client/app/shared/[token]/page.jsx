@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { getSharedPage, getSharedPageSocketURL } from "../../../lib/api";
+import { getSharedPage, getSharedPageSocketURL, updateSharedPage } from "../../../lib/api";
 import RichTextEditor from "../../../components/RichTextEditor";
 
 export default function SharedPage() {
@@ -10,6 +10,12 @@ export default function SharedPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [live, setLive] = useState(false);
+  const [saveTimer, setSaveTimer] = useState(null);
+  const [saveStatus, setSaveStatus] = useState("");
+
+  // MOVED INSIDE the component — this reads `page` from useState above,
+  // so it must live below that useState line, not outside the function.
+  const isEditor = page?.share_role === "editor";
 
   useEffect(() => {
     async function fetchPage() {
@@ -50,6 +56,27 @@ export default function SharedPage() {
     };
   }, [params.token]);
 
+  // MOVED INSIDE the component — this needs `page`, `setPage`, `saveTimer`,
+  // `setSaveTimer`, `setSaveStatus`, and `params`, all of which only exist
+  // inside the component function. A plain function declared outside the
+  // component (as it was before) can't see any of them.
+  function handleGuestEdit(newContent) {
+    if (!page) return;
+    setPage(prev => ({ ...prev, content: newContent }));
+    if (saveTimer) clearTimeout(saveTimer);
+    setSaveStatus("Saving...");
+    const timer = setTimeout(async () => {
+      try {
+        await updateSharedPage(params.token, page.title, newContent);
+        setSaveStatus("Saved ✓");
+        setTimeout(() => setSaveStatus(""), 2000);
+      } catch {
+        setSaveStatus("Failed to save");
+      }
+    }, 800);
+    setSaveTimer(timer);
+  }
+
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "#000", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
       Loading...
@@ -73,9 +100,11 @@ export default function SharedPage() {
           </div>
           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Notion Clone — Shared Page</span>
         </div>
-        <a href="/login" style={{ fontSize: 13, color: "#89ba5c", textDecoration: "none" }}>
-          Sign in to edit →
-        </a>
+{!isEditor && (
+  <a href="/login" style={{ fontSize: 13, color: "#89ba5c", textDecoration: "none" }}>
+    Sign in to edit →
+  </a>
+)}
       </div>
 
       {/* Page content */}
@@ -83,12 +112,17 @@ export default function SharedPage() {
         <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8, color: "rgba(255,255,255,0.93)" }}>
           {page.title}
         </h1>
-        <p style={{ fontSize: 12, color: live ? "#89ba5c" : "rgba(255,255,255,0.3)", marginBottom: 32 }}>
-          {live ? "Live updates connected" : "Shared page — read only"}
+        <p style={{ fontSize: 12, color: live ? "#89ba5c" : "rgba(255,255,255,0.3)", marginBottom: 8 }}>
+          {live ? "Live updates connected" : "Shared page"}
+          {isEditor ? " — you can edit this page" : " — read only"}
         </p>
+        {isEditor && saveStatus && (
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 24 }}>{saveStatus}</p>
+        )}
         <RichTextEditor
           content={page.content || ""}
-          editable={false}
+          editable={isEditor}
+          onChange={isEditor ? handleGuestEdit : undefined}
         />
       </div>
     </div>

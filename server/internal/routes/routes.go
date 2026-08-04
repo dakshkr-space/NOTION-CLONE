@@ -22,8 +22,12 @@ func Setup(app *fiber.App) {
 	auth.Post("/login", handlers.Login)
 	auth.Get("/google", handlers.GoogleLogin)
 	auth.Get("/google/callback", handlers.GoogleCallback)
+	app.Get("/auth/me", middleware.Protected, handlers.Me)
+	app.Post("/auth/logout", handlers.Logout)
 	// PUBLIC shared page route - no auth needed
 	app.Get("/shared/:token", handlers.GetSharedPage)
+	app.Put("/shared/:token", handlers.UpdateSharedPage) // NEW LINE — no Protected middleware, it's public
+	app.Get("/ws/pages/:id", websocket.New(handlers.PageWebSocket))
 	// AI endpoint
 	app.Post("/ai/ask", middleware.Protected, handlers.AskAI)
 	// Version History routes

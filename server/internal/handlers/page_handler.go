@@ -4,8 +4,10 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"log"
+	"strconv"
 
 	"github.com/dakshkr-space/NOTION-CLONE/internal/db"
+	"github.com/dakshkr-space/NOTION-CLONE/internal/middleware"
 	"github.com/dakshkr-space/NOTION-CLONE/internal/models"
 	"github.com/dakshkr-space/NOTION-CLONE/internal/realtime"
 	"github.com/gofiber/fiber/v2"
@@ -46,15 +48,13 @@ func CreatePage(c *fiber.Ctx) error {
 }
 
 func GetPages(c *fiber.Ctx) error {
-
 	userID := uint(c.Locals("userID").(float64))
-
 	var pages []models.Page
-
-	if err := db.DB.Where("user_id = ?", userID).Find(&pages).Error; err != nil {
+	if err := db.DB.Where("user_id = ?", userID).
+		Order("order_index asc").
+		Find(&pages).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch pages"})
 	}
-
 	return c.JSON(pages)
 }
 
@@ -137,12 +137,12 @@ func DeletePage(c *fiber.Ctx) error {
 func GetChildPages(c *fiber.Ctx) error {
 	userID := uint(c.Locals("userID").(float64))
 	parentID := c.Params("id")
-
 	var pages []models.Page
-	if err := db.DB.Where("parent_id = ? AND user_id = ?", parentID, userID).Find(&pages).Error; err != nil {
+	if err := db.DB.Where("parent_id = ? AND user_id = ?", parentID, userID).
+		Order("order_index asc").
+		Find(&pages).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch child pages"})
 	}
-
 	return c.JSON(pages)
 }
 
@@ -155,19 +155,69 @@ func SharePage(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Page not found"})
 	}
 
-	// Generates a random 16-byte hex token
+	var body struct {
+		Role string `json:"role"` // "viewer" or "editor"
+	}
+	c.BodyParser(&body) // ignore error — role is optional
+
+	role := body.Role
+	if role != "editor" {
+		role = "viewer" // anything that isn't explicitly "editor" becomes "viewer"
+	}
+
 	bytes := make([]byte, 16)
 	rand.Read(bytes)
 	token := hex.EncodeToString(bytes)
 
-	if err := db.DB.Model(&page).Update("share_token", token).Error; err != nil {
+	if err := db.DB.Model(&page).Updates(map[string]interface{}{
+		"share_token": token,
+		"share_role":  role,
+	}).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate share link"})
 	}
 
 	return c.JSON(fiber.Map{
 		"share_token": token,
+		"share_role":  role,
 		"share_url":   "http://localhost:3001/shared/" + token,
 	})
+}
+
+func UpdateSharedPage(c *fiber.Ctx) error {
+	token := c.Params("token")
+
+	var page models.Page
+	if err := db.DB.Where("share_token = ?", token).First(&page).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Page not found or link expired"})
+	}
+
+	if page.ShareRole != "editor" {
+		return c.Status(403).JSON(fiber.Map{"error": "This link is view-only"})
+	}
+
+	var body struct {
+		Title   string `json:"title"`
+		Content string `json:"content"`
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
+	}
+
+	version := models.PageVersion{
+		PageID:      page.ID,
+		Title:       page.Title,
+		Content:     page.Content,
+		CreatedByID: page.UserID, // guest edits are attributed to the page owner
+	}
+	db.DB.Create(&version)
+
+	db.DB.Model(&page).Updates(models.Page{Title: body.Title, Content: body.Content})
+
+	page.Title = body.Title
+	page.Content = body.Content
+	realtime.DefaultHub.BroadcastPageUpdate(page.ID, page.Title, page.Content)
+
+	return c.JSON(page)
 }
 
 func GetSharedPage(c *fiber.Ctx) error {
@@ -234,6 +284,47 @@ func SharedPageWebSocket(conn *websocket.Conn) {
 	}
 
 	// Shared viewers are read-only. Reading keeps the connection open until it closes.
+	for {
+		if _, _, err := conn.ReadMessage(); err != nil {
+			return
+		}
+	}
+}
+
+// PageWebSocket streams live edits to the page's OWNER while they're viewing
+// it in the dashboard — separate from SharedPageWebSocket, which streams to
+// public share-link viewers/editors. Auth comes from a ?token= query param
+// since WebSocket connections can't carry a normal Authorization header.
+func PageWebSocket(conn *websocket.Conn) {
+	tokenStr := conn.Cookies("token")
+	userID, err := middleware.ParseUserID(tokenStr)
+	if err != nil {
+		conn.WriteJSON(fiber.Map{"type": "error", "error": "Unauthorized"})
+		conn.Close()
+		return
+	}
+
+	pageIDStr := conn.Params("id")
+	pageID, err := strconv.ParseUint(pageIDStr, 10, 32)
+	if err != nil {
+		conn.Close()
+		return
+	}
+
+	var page models.Page
+	if err := db.DB.Where("id = ? AND user_id = ?", pageID, userID).First(&page).Error; err != nil {
+		conn.WriteJSON(fiber.Map{"type": "error", "error": "Page not found"})
+		conn.Close()
+		return
+	}
+
+	client, unsubscribe := realtime.DefaultHub.Subscribe(page.ID, conn)
+	defer unsubscribe()
+
+	if err := realtime.DefaultHub.SendSnapshot(client, page.ID, page.Title, page.Content, page.UpdatedAt); err != nil {
+		return
+	}
+
 	for {
 		if _, _, err := conn.ReadMessage(); err != nil {
 			return

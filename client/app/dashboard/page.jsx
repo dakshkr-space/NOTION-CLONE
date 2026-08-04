@@ -1,11 +1,25 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getPages, createPage, createSubPage, getChildPages, updatePage, sharePage, askAI, deletePage, getUser, getToken, clearAuth } from "../../lib/api";
+import { getPages, createPage, createSubPage, getChildPages, updatePage, sharePage, askAI, deletePage, getCurrentUser, logout, getPageSocketURL } from "../../lib/api";
 import RichTextEditor from "../../components/RichTextEditor";
 import VersionHistoryDrawer from "@/components/VersionHistoryDrawer";
 import CommentsPanel from "@/components/CommentsPanel";
 import SidebarPageList from "@/components/SidebarPageList";
+
+// Small reusable icon-only button used in the page header action row
+function IconButton({ icon, onClick, title, accent, danger }) {
+  return (
+    <button onClick={onClick} title={title} style={{
+      width: 34, height: 34, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)",
+      background: accent ? "#38940a" : danger ? "rgba(255,80,80,0.12)" : "transparent",
+      color: danger ? "#ff6b6b" : "#fff", cursor: "pointer",
+      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
+    }}>
+      <i className={`bi ${icon}`}></i>
+    </button>
+  );
+}
 
 export default function DashboardPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -78,32 +92,51 @@ export default function DashboardPage() {
     },
   ];
 
+  // STEP 8 — no more getToken()/atob() JWT decoding. The backend reads the
+  // HttpOnly cookie itself and tells us who's logged in via /auth/me.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlToken = params.get("token");
-    if (urlToken) {
-      localStorage.setItem("token", urlToken);
-      window.history.replaceState({}, "", "/dashboard");
-    }
-    if (!getToken()) {
-      router.replace("/login");
-      return;
-    }
-    const token = getToken();
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        setUser({ 
-          id: payload.user_id, 
-          role: payload.role, 
-          team_id: payload.team_id 
-        });
-      } catch (e) {
-        console.error("Failed to decode token", e);
+    async function init() {
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        router.replace("/login");
+        return;
       }
+      setUser(currentUser);
+      fetchPages();
     }
-    fetchPages();
+    init();
   }, []);
+
+  useEffect(() => {
+    if (!selectedPage?.id) return;
+
+    let active = true;
+    const socket = new WebSocket(getPageSocketURL(selectedPage.id));
+    socket.onmessage = (event) => {
+      try {
+        const update = JSON.parse(event.data);
+        if (!active) return;
+        if (update.type === "page_snapshot" || update.type === "page_updated") {
+          setSelectedPage(prev =>
+            prev && prev.id === update.page_id
+              ? { ...prev, title: update.title, content: update.content }
+              : prev
+          );
+          setPages(prev => prev.map(p =>
+            p.id === update.page_id ? { ...p, title: update.title, content: update.content } : p
+          ));
+        }
+      } catch {
+        // ignore malformed frames
+      }
+    };
+
+    return () => {
+      active = false;
+      socket.close();
+    };
+  }, [selectedPage?.id]);
+
 
   async function fetchPages() {
     setLoadingPages(true);
@@ -180,23 +213,28 @@ export default function DashboardPage() {
     }
   }
 
-  function handleLogout() {
-    clearAuth();
+  // STEP 8 — now calls the backend's logout endpoint, which expires the
+  // HttpOnly cookie server-side, instead of clearing localStorage.
+  async function handleLogout() {
+    await logout();
     router.replace("/login");
   }
 
-  async function handleShare() {
-    setSharing(true);
-    setShareUrl("");
-    try {
-      const data = await sharePage(selectedPage.id);
-      setShareUrl(data.share_url);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSharing(false);
-    }
+const [shareRole, setShareRole] = useState("viewer");
+
+async function handleShare(role) {
+  setSharing(true);
+  setShareUrl("");
+  try {
+    const data = await sharePage(selectedPage.id, role);
+    setShareUrl(data.share_url);
+    setShareRole(data.share_role);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setSharing(false);
   }
+}
 
   async function handleDeletePage(page) {
     if (!confirm(`Delete "${page.title}"? This cannot be undone.`)) return;
@@ -274,11 +312,15 @@ export default function DashboardPage() {
     setSaveTimer(timer);
   }
 
+  // NOTE: PageLink appears to be superseded by SidebarPageList (see earlier
+  // review) — kept as-is structurally, just updated so it no longer
+  // references the removed getToken() import. It now checks `user` instead,
+  // which is equivalent (both were just "is someone logged in").
   function PageLink({ page, depth = 0 }) {
     const isExpanded = expandedPages[page.id];
     const children = childPages[page.id] || [];
 
-    if (!getToken()) return null;
+    if (!user) return null;
 
     return (
       <div>
@@ -465,9 +507,10 @@ export default function DashboardPage() {
 
         <div style={{ padding: "24px" }}>
 
+
           {selectedPage ? (
             /* ── OPEN PAGE VIEW ── */
-            <div>
+            <div style={{ maxWidth: 760, margin: "0 auto" }}>
               {editingTitle ? (
                 <form onSubmit={handleEditTitle} style={{ marginBottom: 8 }}>
                   <input
@@ -492,56 +535,58 @@ export default function DashboardPage() {
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", margin: 0 }}>
                   Created {new Date(selectedPage.created_at).toLocaleDateString()}
                 </p>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {saveStatus && (
                     <span style={{ fontSize: 12, color: saveStatus === "Saved ✓" ? "#89ba5c" : "rgba(255,255,255,0.4)" }}>
                       {saveStatus}
                     </span>
                   )}
 
+                  <IconButton
+                    icon="bi-clock-history"
+                    title="History"
+                    onClick={() => { setShowVersions(!showVersions); setShowComments(false); }}
+                  />
+                  <IconButton
+                    icon="bi-chat-left-text"
+                    title="Comments"
+                    onClick={() => { setShowComments(!showComments); setShowVersions(false); }}
+                  />
+
                   <button
-                    onClick={() => {
-                      setShowVersions(!showVersions);
-                      setShowComments(false);
-                    }}
+                    onClick={() => handleShare("viewer")}
+                    disabled={sharing}
                     style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: "none", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
-                    <i className="bi bi-clock-history" style={{ marginRight: 6 }}></i>History
+                    {sharing ? "..." : "👁 View link"}
                   </button>
 
                   <button
-                    onClick={() => {
-                      setShowComments(!showComments);
-                      setShowVersions(false);
-                    }}
-                    style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: "none", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
-                    <i className="bi bi-chat-left-text" style={{ marginRight: 6 }}></i>Comments
-                  </button>
-
-                  <button
-                    onClick={handleShare}
+                    onClick={() => handleShare("editor")}
                     disabled={sharing}
                     style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: "#38940a", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
-                    {sharing ? "Generating..." : "🔗 Share"}
+                    {sharing ? "..." : "✏️ Edit link"}
                   </button>
 
-                  <button
+                  <IconButton
+                    icon="bi-trash3"
+                    title="Delete"
+                    danger
                     onClick={() => handleDeletePage(selectedPage)}
-                    style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: "rgba(255,80,80,0.15)", color: "#ff6b6b", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
-                    🗑 Delete
-                  </button>
+                  />
                 </div>
               </div>
 
               {/* Share URL display */}
-              {shareUrl && (
-                <div style={{ background: "#191919", border: "1px solid rgba(56,148,10,0.4)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                  <span style={{ fontSize: 12, color: "#89ba5c", flex: 1, wordBreak: "break-all" }}>{shareUrl}</span>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(shareUrl); }}
-                    style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: "none", color: "#fff", fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
-                    Copy
-                  </button>
-                </div>
+                {shareUrl && (
+               <div style={{ background: "#191919", border: "1px solid rgba(56,148,10,0.4)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+               <span style={{ fontSize: 12, color: "#89ba5c", flex: 1, wordBreak: "break-all" }}>
+                {shareRole === "editor" ? "🖊 Anyone with this link can edit: " : "👁 Anyone with this link can view: "}
+                {shareUrl}
+               </span>
+               <button onClick={() => navigator.clipboard.writeText(shareUrl)} style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: "none", color: "#fff", fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
+                Copy
+              </button>
+             </div>
               )}
 
               {searchMatch && selectedPage?.content?.toLowerCase().includes(searchMatch.toLowerCase()) && (

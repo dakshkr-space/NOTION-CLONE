@@ -1,37 +1,31 @@
 package middleware
 
 import (
+	"errors"
 	"os"
-	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func Protected(c *fiber.Ctx) error { //default middle ware function for fiber
-
-	authHeader := c.Get("Authorization") //reads authorization http header, if empty return..
-	if authHeader == "" {
-		return c.Status(401).JSON(fiber.Map{"error": "Missing authorization header"}) //401 unauthorised
+func Protected(c *fiber.Ctx) error {
+	tokenStr := c.Cookies("token")
+	if tokenStr == "" {
+		return c.Status(401).JSON(fiber.Map{"error": "Not authenticated"})
 	}
-
-	tokenStr := strings.TrimPrefix(authHeader, "Bearer ") //strips bearer prefix to give raw jwt token, if exists
 
 	token, err := jwt.ParseWithClaims(tokenStr, &jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("JWT_SECRET")), nil
-	}) //jwt verification
-
+	})
 	if err != nil || !token.Valid {
 		return c.Status(401).JSON(fiber.Map{"error": "Invalid or expired token"})
 	}
 
-	// token.Claims is *jwt.MapClaims (pointer), because  &jwt.MapClaims{}was passed above
 	claims, ok := token.Claims.(*jwt.MapClaims)
 	if !ok {
 		return c.Status(401).JSON(fiber.Map{"error": "Invalid token claims"})
 	}
 
-	// claims is a pointer, so dereference
 	c.Locals("userID", (*claims)["user_id"])
 	c.Locals("role", (*claims)["role"])
 	c.Locals("teamID", (*claims)["team_id"])
@@ -59,7 +53,24 @@ func RequireRole(allowedRoles ...string) fiber.Handler {
 	}
 }
 
-
-
-
-
+// ParseUserID verifies a JWT string directly (not via a Fiber request) and
+// returns the user_id claim. Used by WebSocket routes, which can't rely on
+// the normal Protected middleware because browsers can't set custom headers
+// on a WebSocket connection.
+func ParseUserID(tokenStr string) (uint, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil || !token.Valid {
+		return 0, errors.New("invalid or expired token")
+	}
+	claims, ok := token.Claims.(*jwt.MapClaims)
+	if !ok {
+		return 0, errors.New("invalid token claims")
+	}
+	idFloat, ok := (*claims)["user_id"].(float64)
+	if !ok {
+		return 0, errors.New("invalid user_id claim")
+	}
+	return uint(idFloat), nil
+}

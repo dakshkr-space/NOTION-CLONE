@@ -7,18 +7,20 @@ const API_BASE = "http://localhost:3000";
 export async function loginWithEmail(email, password) {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
+    credentials: "include", // sends/receives the HttpOnly cookie
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Login failed");
-  return data;
+  return data; // { user } — no token in the body anymore, it's in the cookie
 }
 
 
 export async function registerWithEmail(name, email, password) {
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, email, password }),
   });
@@ -32,27 +34,20 @@ export function loginWithGoogle() {
   window.location.href = `${API_BASE}/auth/google`;
 }
 
-
-
-export function saveAuth(token, user) {
-  localStorage.setItem("token", token);
-  localStorage.setItem("user", JSON.stringify(user));
+// Ask the backend who's currently logged in, based on the cookie it receives.
+// Replaces the old getToken()/getUser()/JWT-decode approach entirely.
+export async function getCurrentUser() {
+  const res = await fetch(`${API_BASE}/auth/me`, { credentials: "include" });
+  if (!res.ok) return null;
+  return await res.json();
 }
 
-export function getToken() {
-  return localStorage.getItem("token");
-}
-
-
-export function getUser() {
-  const u = localStorage.getItem("user");
-  return u ? JSON.parse(u) : null;
-}
-
-
-export function clearAuth() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
+// Replaces clearAuth() — tells the backend to expire the cookie server-side.
+export async function logout() {
+  await fetch(`${API_BASE}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
 }
 
 //PAGES 
@@ -60,7 +55,7 @@ export function clearAuth() {
 
 export async function getPages() {
   const res = await fetch(`${API_BASE}/pages`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
+    credentials: "include",
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to fetch pages");
@@ -71,10 +66,8 @@ export async function getPages() {
 export async function createPage(title, content) {
   const res = await fetch(`${API_BASE}/pages`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
-    },
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, content }),
   });
   const data = await res.json();
@@ -85,7 +78,7 @@ export async function createPage(title, content) {
 // Fetch child pages of a given parent page ID
 export async function getChildPages(parentId) {
   const res = await fetch(`${API_BASE}/pages/${parentId}/children`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
+    credentials: "include",
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to fetch child pages");
@@ -96,10 +89,8 @@ export async function getChildPages(parentId) {
 export async function createSubPage(title, content, parentId) {
   const res = await fetch(`${API_BASE}/pages`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
-    },
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, content, parent_id: parentId }),
   });
   const data = await res.json();
@@ -110,14 +101,11 @@ export async function createSubPage(title, content, parentId) {
 // Update an existing page (used for auto-save)
 export async function updatePage(id, title, content) {
   if (!id) return;
-  const token = getToken();
 
   const res = await fetch(`${API_BASE}/pages/${id}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: token ? `Bearer ${token}` : "",
-    },
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, content }),
   });
 
@@ -130,13 +118,28 @@ export async function updatePage(id, title, content) {
 }
 
 // Generate a share link for a page
-export async function sharePage(pageId) {
+export async function sharePage(pageId, role = "viewer") {
   const res = await fetch(`${API_BASE}/pages/${pageId}/share`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${getToken()}` },
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to generate share link");
+  return data;
+}
+
+// Guest edit via an editor share link — stays public/unauthenticated,
+// access is controlled entirely by the share token + its stored role.
+export async function updateSharedPage(token, title, content) {
+  const res = await fetch(`${API_BASE}/shared/${token}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, content }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to save");
   return data;
 }
 
@@ -152,10 +155,8 @@ export async function getSharedPage(token) {
 export async function askAI(prompt, pageTitle = "", pageContent = "") {
   const res = await fetch(`${API_BASE}/ai/ask`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
-    },
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       prompt,
       page_title: pageTitle,
@@ -170,7 +171,7 @@ export async function askAI(prompt, pageTitle = "", pageContent = "") {
 export async function deletePage(id) {
   const res = await fetch(`${API_BASE}/pages/${id}`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${getToken()}` },
+    credentials: "include",
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to delete page");
@@ -179,9 +180,9 @@ export async function deletePage(id) {
 
 export async function getPageVersions(pageId) {
   const res = await fetch(`${API_BASE}/pages/${pageId}/versions`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
+    credentials: "include",
   });
-const data = await res.json();
+  const data = await res.json();
 
   if (!res.ok) throw new Error(data.error || "Failed to fetch page versions");
   return data;
@@ -190,9 +191,9 @@ const data = await res.json();
 export async function restorePageVersion(pageId, versionId) {
   const res = await fetch(`${API_BASE}/pages/${pageId}/versions/${versionId}/restore`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${getToken()}` },
+    credentials: "include",
   });
-const data = await res.json();
+  const data = await res.json();
 
   if (!res.ok) throw new Error(data.error || "Failed to restore version");
   return data;
@@ -200,12 +201,9 @@ const data = await res.json();
 
 export async function getComments(pageId) {
   if (!pageId) return [];
-  const token = getToken();
 
   const res = await fetch(`${API_BASE}/pages/${pageId}/comments`, {
-    headers: {
-      Authorization: token ? `Bearer ${token}` : "",
-    },
+    credentials: "include",
   });
 
   if (!res.ok) return [];
@@ -214,14 +212,11 @@ export async function getComments(pageId) {
 
 export async function addComment(pageId, content) {
   if (!pageId || !content.trim()) return;
-  const token = getToken();
 
   const res = await fetch(`${API_BASE}/pages/${pageId}/comments`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: token ? `Bearer ${token}` : "",
-    },
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
   });
 
@@ -236,10 +231,8 @@ export async function addComment(pageId, content) {
 export async function reorderPages(pages) {
   const res = await fetch(`${API_BASE}/pages/reorder`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
-    },
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ pages }),
   });
   const data = await res.json();
@@ -247,7 +240,15 @@ export async function reorderPages(pages) {
   return data;
 }
 
-// WebSocket endpoint for read-only viewers of a shared page.
+// WebSocket endpoint for read-only/editor viewers of a shared page (public link).
 export function getSharedPageSocketURL(token) {
   return API_BASE.replace(/^http/, "ws") + "/ws/shared/" + token;
+}
+
+// WebSocket endpoint for the logged-in owner's dashboard view.
+// No ?token= needed anymore — the browser attaches the HttpOnly cookie
+// to the WebSocket upgrade request automatically, and the backend reads
+// it via conn.Cookies("token") (see PageWebSocket, Step 6).
+export function getPageSocketURL(pageId) {
+  return API_BASE.replace(/^http/, "ws") + "/ws/pages/" + pageId;
 }

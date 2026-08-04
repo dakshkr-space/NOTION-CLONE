@@ -198,10 +198,10 @@ export default function RichTextEditor({ content, onChange, editable = true }) {
           outline: none;
           color: rgba(255,255,255,0.85);
           font-size: 14px;
-          line-height: 1.8;
+          line-height: 1.9;
           min-height: 180px;
         }
-        .ProseMirror p { margin: 0 0 8px 0; }
+        .ProseMirror p { margin: 0 0 12px 0; }
         .ProseMirror h1 { font-size: 1.8rem; font-weight: 700; margin: 16px 0 8px 0; color: #fff; }
         .ProseMirror h2 { font-size: 1.4rem; font-weight: 600; margin: 14px 0 6px 0; color: #fff; }
         .ProseMirror h3 { font-size: 1.1rem; font-weight: 600; margin: 12px 0 4px 0; color: #fff; }
